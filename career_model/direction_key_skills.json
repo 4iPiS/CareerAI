@@ -1,0 +1,65 @@
+{
+  "Химия": [
+    "chemical_analysis"
+  ],
+  "Химия, физика и механика материалов": [
+    "chemical_analysis",
+    "experimental_physics"
+  ],
+  "Экология и природопользование": [
+    "ecology"
+  ],
+  "Физика": [
+    "experimental_physics"
+  ],
+  "Информатика и вычислительная техника": [
+    "computer_systems"
+  ],
+  "Информационные системы и технологии": [
+    "computer_systems",
+    "it_infrastructure",
+    "business_analytics"
+  ],
+  "Прикладная информатика": [
+    "business_analytics"
+  ],
+  "Программная инженерия": [
+    "software_development"
+  ],
+  "Конструирование и технология электронных средств": [
+    "electronics"
+  ],
+  "Электроэнергетика и электротехника": [
+    "power_engineering"
+  ],
+  "Ядерные физика и технологии": [
+    "nuclear_physics",
+    "experimental_physics"
+  ],
+  "Автоматизация технологических процессов": [
+    "automation_tech",
+    "computer_systems"
+  ],
+  "Авиастроение": [
+    "aerospace_design",
+    "experimental_physics"
+  ],
+  "Психология": [
+    "psychological_counseling"
+  ],
+  "Менеджмент": [
+    "management"
+  ],
+  "Государственное и муниципальное управление": [
+    "public_administration"
+  ],
+  "Социология": [
+    "social_research"
+  ],
+  "Юриспруденция": [
+    "legal_knowledge"
+  ],
+  "Лингвистика": [
+    "linguistics_skill"
+  ]
+}

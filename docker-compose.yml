@@ -1,0 +1,15 @@
+services:
+  career-ai:
+    build: .
+    container_name: career-ai
+    ports:
+      - "7777:7777"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "7777"
+      TF_CPP_MIN_LOG_LEVEL: "3"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./data:/app/data
+      - ./output:/app/output
+    restart: unless-stopped

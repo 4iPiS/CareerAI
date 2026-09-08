@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CareerAI — Профориентация</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hero-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% 35%, rgba(102, 126, 234, 0.35) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 80% 20%, rgba(118, 75, 162, 0.25) 0%, transparent 50%),
+                linear-gradient(160deg, #0f172a 0%, #1e1b4b 45%, #0f172a 100%);
+        }
+
+        .hero-illustration {
+            position: fixed;
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(320px, 70vw);
+            height: min(320px, 70vw);
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .hero-illustration .hero-logo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.35));
+        }
+
+        .hero-badge {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 999px;
+            padding: 8px 20px;
+            color: #e2e8f0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .gradient-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 380px;
+            background: linear-gradient(0deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .question-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            border-radius: 30px 30px 0 0;
+            padding: 20px 20px 30px;
+            z-index: 3;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .question-text {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.4;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .rating-scale {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .rating-option {
+            flex: 1;
+            min-width: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .rating-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .rating-option.selected {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #a855f7;
+            transform: scale(1.05);
+        }
+
+        .rating-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .rating-label {
+            font-size: 0.6rem;
+            color: #cbd5e1;
+            margin-top: 4px;
+        }
+
+        .next-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .next-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .salary-input {
+            width: 100%;
+            padding: 14px;
+            font-size: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 40px;
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .progress-container {
+            margin-bottom: 15px;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            color: #cbd5e1;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        .start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #0f172a, #1e1b4b);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .start-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            border: none;
+            cursor: pointer;
+            animation: pulse 1.5s infinite;
+        }
+
+        .feedback-section {
+            background: #1e293b;
+            border-radius: 20px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #334155;
+        }
+
+        .feedback-title {
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .direction-check {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e2e8f0;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .direction-check input {
+            width: 16px;
+            height: 16px;
+        }
+
+        .feedback-msg {
+            color: #86efac;
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.85rem;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #334155;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        body.results-open {
+            overflow-y: auto;
+            position: static;
+            height: auto;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 600px) {
+            .question-text { font-size: 1.1rem; }
+            .rating-value { font-size: 1.2rem; }
+            .rating-option { min-width: 50px; padding: 8px 4px; }
+            .rating-label { font-size: 0.55rem; }
+            .hero-illustration { top: 38%; width: min(260px, 65vw); height: min(260px, 65vw); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hero-background" aria-hidden="true"></div>
+
+    <div class="hero-illustration" id="heroLogo">
+        <img src="/static/logo-gud.png" alt="Государственный университет «Дубна»" class="hero-logo">
+    </div>
+
+    <div class="hero-badge" id="heroBadge" style="display: none;">Университет «Дубна»</div>
+
+    <div class="gradient-overlay" aria-hidden="true"></div>
+
+    <div id="app"></div>
+
+    <div id="startScreen" class="start-screen">
+        <div style="text-align: center; padding: 20px;">
+            <img src="/static/logo-gud.png" alt="Университет Дубна" style="width:min(140px,40vw); margin-bottom:20px;">
+            <h1 style="color: white; margin-bottom: 15px;">CareerAI</h1>
+            <p style="color: #cbd5e1; margin-bottom: 30px; max-width: 320px;">
+                Подберём направления подготовки Университета «Дубна» под ваши интересы
+            </p>
+            <button class="start-button" id="startButton" type="button">Начать опрос</button>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let currentRating = null;
+        let isProcessing = false;
+        let allDirections = [];
+
+        const heroBadge = document.getElementById('heroBadge');
+
+        async function loadDirections() {
+            try {
+                const resp = await fetch('/api/directions');
+                const data = await resp.json();
+                allDirections = data.directions || [];
+            } catch (e) {
+                console.warn('Не удалось загрузить список направлений', e);
+            }
+        }
+        loadDirections();
+
+        async function startSurvey() {
+            document.getElementById('startScreen').style.display = 'none';
+            showHero(true);
+            showLoading();
+            try {
+                const resp = await fetch('/api/start', { method: 'POST' });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+                sessionId = data.session_id;
+                showQuestion(data.question, data);
+            } catch (e) {
+                console.error(e);
+                showError(e.message);
+            }
+        }
+
+        function showQuestion(q, progress) {
+            let html = `
+                <div class="question-panel">
+                    <div class="progress-container">
+                        <div class="progress-info">
+                            <span>${getStageName(progress?.progress?.stage)}</span>
+                            <span>${progress?.progress?.current || 0}/${progress?.progress?.total || 0}</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${getProgressPercent(progress)}%"></div>
+                        </div>
+                    </div>
+                    <div class="question-text">${escapeHtml(q.text)}</div>
+            `;
+
+            if (progress && progress.is_salary) {
+                html += `
+                    <input type="number" class="salary-input" id="salaryInput" placeholder="100000" value="100000">
+                    <button class="next-btn" id="nextBtn" type="button">Получить рекомендации</button>
+                </div>`;
+                document.getElementById('app').innerHTML = html;
+                document.getElementById('nextBtn').onclick = () => {
+                    if (isProcessing) return;
+                    const val = parseInt(document.getElementById('salaryInput').value, 10) || 100000;
+                    submitAnswer('salary', val);
+                };
+            } else {
+                html += `
+                    <div class="rating-scale">
+                        ${[1, 2, 3, 4, 5].map(v => `
+                            <div class="rating-option" data-value="${v}">
+                                <div class="rating-value">${v}</div>
+                                <div class="rating-label">${['Очень низкий', 'Низкий', 'Средний', 'Высокий', 'Очень высокий'][v - 1]}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="next-btn" id="nextBtn" type="button" disabled>Далее</button>
+                </div>`;
+                document.getElementById('app').innerHTML = html;
+
+                currentRating = null;
+                document.querySelectorAll('.rating-option').forEach(btn => {
+                    btn.onclick = () => {
+                        document.querySelectorAll('.rating-option').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        currentRating = parseInt(btn.dataset.value, 10);
+                        document.getElementById('nextBtn').disabled = false;
+                    };
+                });
+
+                document.getElementById('nextBtn').onclick = () => {
+                    if (currentRating && !isProcessing) {
+                        submitAnswer(q.id, currentRating);
+                    }
+                };
+            }
+
+        }
+
+        function showHero(show) {
+            heroBadge.style.display = show ? 'block' : 'none';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getStageName(stage) {
+            const names = {
+                screening: 'Шаг 1/3: Интересы',
+                detailed: 'Шаг 2/3: Углублённо',
+                personal: 'Шаг 3/3: Личные качества'
+            };
+            return names[stage] || 'Опрос';
+        }
+
+        function getProgressPercent(progress) {
+            if (progress?.progress?.total && progress?.progress?.current) {
+                return (progress.progress.current / progress.progress.total) * 100;
+            }
+            return 0;
+        }
+
+        async function submitAnswer(qId, ans) {
+            if (isProcessing) return;
+            isProcessing = true;
+            showLoading();
+            try {
+                const resp = await fetch('/api/answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId, question_id: qId, answer: ans })
+                });
+                const data = await resp.json();
+                if (data.done) {
+                    showResults(data.recommendations);
+                } else if (data.question) {
+                    showQuestion(data.question, data);
+                } else {
+                    showError('Ошибка сервера');
+                }
+            } catch (e) {
+                console.error(e);
+                showError(e.message);
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('app').innerHTML = `
+                <div class="question-panel" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 160px;">
+                    <div class="spinner"></div>
+                    <div style="color: white;">Загрузка...</div>
+                </div>`;
+        }
+
+        function showResults(recommendations) {
+            showHero(false);
+            document.body.classList.add('results-open');
+
+            const colors = {
+                IDEAL: '#10b981',
+                EXCELLENT: '#3b82f6',
+                GOOD: '#f59e0b',
+                AVERAGE: '#8b5cf6',
+                LOW: '#ef4444'
+            };
+
+            let html = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #0f172a; z-index: 10; overflow-y: auto; padding: 20px;">
+                    <h2 style="color: white; text-align: center; margin-bottom: 20px;">🎓 Ваши рекомендации</h2>`;
+
+            for (const rec of recommendations) {
+                html += `
+                    <div style="background: #1e293b; border-radius: 20px; padding: 20px; margin-bottom: 15px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">${rec.rank}</div>
+                            <div style="font-size: 1rem; font-weight: 600; color: white; flex: 1;">${escapeHtml(rec.field)}</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #f59e0b;">${rec.probability}%</div>
+                            <div style="padding: 4px 12px; border-radius: 20px; background: ${colors[rec.match_level] || '#64748b'}; color: white; font-size: 0.75rem;">${rec.match_level}</div>
+                        </div>
+                        ${rec.explanation ? `<div style="margin-top: 10px; color: #cbd5e1; font-size: 0.85rem;">💡 ${escapeHtml(rec.explanation)}</div>` : ''}
+                        ${rec.key_skills ? `<div style="margin-top: 8px; color: #94a3b8; font-size: 0.75rem;">🔧 ${escapeHtml(rec.key_skills)}</div>` : ''}
+                    </div>`;
+            }
+
+            if (allDirections.length) {
+                html += `
+                    <div class="feedback-section" id="feedbackSection">
+                        <div class="feedback-title">Помогите улучшить сервис (необязательно)</div>
+                        <p style="color:#94a3b8; font-size:0.8rem; margin-bottom:12px;">
+                            Отметьте 1–3 направления, которые вам действительно близки:
+                        </p>
+                        <div id="directionChecks">
+                            ${allDirections.map(d => `
+                                <label class="direction-check">
+                                    <input type="checkbox" name="chosen_direction" value="${escapeHtml(d)}">
+                                    <span>${escapeHtml(d)}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                        <p style="color:#94a3b8; font-size:0.8rem; margin:16px 0 8px;">Насколько полезны рекомендации? (1–5)</p>
+                        <div class="rating-scale" id="feedbackRating">
+                            ${[1,2,3,4,5].map(v => `
+                                <div class="rating-option feedback-rating" data-value="${v}">
+                                    <div class="rating-value">${v}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button type="button" class="next-btn" id="submitFeedbackBtn" style="margin-top:16px;">Отправить отзыв</button>
+                        <div id="feedbackMsg" class="feedback-msg" style="display:none;"></div>
+                    </div>`;
+            }
+
+            html += `
+                    <button type="button" onclick="location.reload()" style="width: 100%; padding: 14px; background: #334155; color: white; border: none; border-radius: 40px; margin: 20px 0 40px; cursor: pointer;">Пройти заново</button>
+                </div>`;
+
+            document.getElementById('app').innerHTML = html;
+
+            if (allDirections.length) {
+                let feedbackScore = null;
+                document.querySelectorAll('.feedback-rating').forEach(btn => {
+                    btn.onclick = () => {
+                        document.querySelectorAll('.feedback-rating').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        feedbackScore = parseInt(btn.dataset.value, 10);
+                    };
+                });
+
+                document.getElementById('submitFeedbackBtn').onclick = async () => {
+                    const chosen = [...document.querySelectorAll('input[name="chosen_direction"]:checked')]
+                        .map(el => el.value);
+                    if (chosen.length === 0) {
+                        alert('Выберите хотя бы одно направление');
+                        return;
+                    }
+                    if (chosen.length > 3) {
+                        alert('Можно выбрать не больше 3 направлений');
+                        return;
+                    }
+                    try {
+                        const resp = await fetch('/api/feedback', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                session_id: sessionId,
+                                chosen_fields: chosen,
+                                feedback_score: feedbackScore
+                            })
+                        });
+                        const data = await resp.json();
+                        if (!resp.ok) throw new Error(data.error || 'Ошибка сохранения');
+                        const msg = document.getElementById('feedbackMsg');
+                        msg.textContent = data.message || 'Сохранено';
+                        msg.style.display = 'block';
+                        document.getElementById('submitFeedbackBtn').disabled = true;
+                    } catch (e) {
+                        alert(e.message);
+                    }
+                };
+            }
+        }
+
+        function showError(err) {
+            document.getElementById('app').innerHTML = `
+                <div class="question-panel">
+                    <div class="question-text">❌ Ошибка</div>
+                    <div style="color: #f44336; text-align: center; margin: 10px 0;">${escapeHtml(String(err))}</div>
+                    <button class="next-btn" type="button" onclick="location.reload()">Попробовать снова</button>
+                </div>`;
+        }
+
+        document.getElementById('startButton').addEventListener('click', startSurvey);
+    </script>
+</body>
+</html>

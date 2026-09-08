@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data (не коммитить анкеты и обучающие выборки)
+data/
+output/
+profiles/
+
+# Старые форматы моделей
+*.h5
+
+# Локальные pkl/keras вне career_model/
+*.pkl
+*.pkl.gz
+*.keras
+!career_model/scaler.pkl
+!career_model/multilabel_binarizer.pkl
+!career_model/career_model.keras
+
+# В career_model/ в git только готовые артефакты (см. train_model.py)
+career_model/*
+!career_model/career_model.keras
+!career_model/scaler.pkl
+!career_model/multilabel_binarizer.pkl
+!career_model/direction_key_skills.json
+
+# Local notes / junk
+мой_карьерный_план.txt
+career_result_instruction.txt
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs and temp
+*.log
+*.tmp
+*.temp
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini

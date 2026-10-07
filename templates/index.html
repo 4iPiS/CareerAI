@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>CareerAI — Профориентация</title>
     <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #764ba2;
+            --primary-soft: rgba(102, 126, 234, 0.35);
+            --primary-dark-soft: rgba(84, 75, 146, 0.25);
+            --primary-bg: rgba(102, 126, 234, 0.95);
+            --hero-image: none;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -13,7 +21,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0f172a;
+            background: var(--primary-dark, #764ba2);
             min-height: 100vh;
             overflow: hidden;
             position: fixed;
@@ -21,6 +29,7 @@
             height: 100%;
         }
 
+        /* ФОН: картинка как базовый слой */
         .hero-background {
             position: fixed;
             top: 0;
@@ -28,31 +37,47 @@
             width: 100%;
             height: 100%;
             z-index: 0;
-            background:
-                radial-gradient(ellipse 80% 60% at 50% 35%, rgba(102, 126, 234, 0.35) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 40% at 80% 20%, rgba(118, 75, 162, 0.25) 0%, transparent 50%),
-                linear-gradient(160deg, #0f172a 0%, #1e1b4b 45%, #0f172a 100%);
+            background-image: var(--hero-image, none);
+            background-size: cover;
+            background-position: center;
+            background-color: var(--primary-dark, #764ba2);
         }
 
-        .hero-illustration {
-            position: fixed;
-            top: 42%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: min(320px, 70vw);
-            height: min(320px, 70vw);
-            z-index: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* Цветной полупрозрачный фильтр ПОВЕРХ картинки */
+        .hero-background::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% 35%, var(--primary-soft) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 80% 20%, var(--primary-dark-soft) 0%, transparent 50%),
+                linear-gradient(160deg, var(--primary-soft) 0%, var(--primary-dark-soft) 50%, var(--primary-soft) 100%);
             pointer-events: none;
         }
 
-        .hero-illustration .hero-logo {
+        .corner-logo {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 50;
+            width: min(84px, 20vw);
+            aspect-ratio: 1 / 1;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 50%;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+            pointer-events: none;
+            border: 2px solid var(--primary-soft);
+        }
+
+        .corner-logo img {
             width: 100%;
             height: 100%;
             object-fit: contain;
-            filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.35));
+            border-radius: 50%;
         }
 
         .hero-badge {
@@ -70,17 +95,7 @@
             font-size: 0.85rem;
             font-weight: 600;
             letter-spacing: 0.02em;
-        }
-
-        .gradient-overlay {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 380px;
-            background: linear-gradient(0deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0) 100%);
-            z-index: 2;
-            pointer-events: none;
+            text-align: center;
         }
 
         .question-panel {
@@ -93,7 +108,7 @@
             border-radius: 30px 30px 0 0;
             padding: 20px 20px 30px;
             z-index: 3;
-            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            border-top: 2px solid var(--primary);
         }
 
         .question-text {
@@ -132,8 +147,8 @@
         }
 
         .rating-option.selected {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-color: #a855f7;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-color: var(--primary);
             transform: scale(1.05);
         }
 
@@ -152,7 +167,7 @@
         .next-btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
             border: none;
             border-radius: 40px;
@@ -179,6 +194,48 @@
             margin-bottom: 20px;
         }
 
+        .custom-field {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 1rem;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            background: rgba(15, 23, 42, 0.65);
+            outline: none;
+            transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+        }
+        .custom-field::placeholder { color: #64748b; }
+        .custom-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
+            background: rgba(30, 27, 75, 0.75);
+        }
+        select.custom-field option { background: #1e293b; color: white; }
+        .custom-label {
+            display: block;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+        .consent-box {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            color: #cbd5e1;
+            font-size: 0.82rem;
+            text-align: left;
+            margin-bottom: 18px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 12px 14px;
+        }
+        .consent-box input { width: auto; transform: scale(1.25); margin-top: 2px; }
+
         .progress-container {
             margin-bottom: 15px;
         }
@@ -192,42 +249,115 @@
         }
 
         .progress-bar {
-            height: 4px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 2px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 3px;
             overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
         }
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transition: width 0.3s ease;
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            border-radius: 3px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.35);
         }
 
+        /* Стартовый экран: полупрозрачная цветная дымка, картинка просвечивает */
         .start-screen {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, #0f172a, #1e1b4b);
+            background:
+                linear-gradient(160deg,
+                    var(--primary-soft) 0%,
+                    var(--primary-dark-soft) 50%,
+                    var(--primary-soft) 100%);
+            background-size: cover;
+            background-position: center;
             z-index: 20;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            overflow-y: auto;
+        }
+
+        .start-title {
+            color: white;
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin: 0 auto 12px;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 600px;
+            align-self: center;
+        }
+
+        .start-tagline {
+            color: #f1f5f9;
+            margin: 0 auto 30px;
+            line-height: 1.55;
+            text-align: center;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+            align-self: center;
+        }
+
+        .ege-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .ege-field {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 16px;
+            padding: 10px 12px;
+            text-align: left;
+        }
+
+        .ege-field label {
+            display: block;
+            color: #cbd5e1;
+            font-size: 0.82rem;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .ege-field input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 10px;
+            padding: 9px 10px;
+            color: white;
+            font-size: 1rem;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .ege-field input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
         }
 
         .start-button {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: rgba(255, 255, 255, 0.95);
+            color: var(--primary);
             padding: 15px 35px;
             border-radius: 50px;
             font-size: 1.2rem;
             font-weight: bold;
-            color: white;
             border: none;
             cursor: pointer;
             animation: pulse 1.5s infinite;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
         }
 
         .feedback-section {
@@ -246,18 +376,37 @@
         }
 
         .direction-check {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
             color: #e2e8f0;
             font-size: 0.85rem;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s ease;
+            line-height: 1.4;
         }
 
-        .direction-check input {
+        .direction-check:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .direction-check input[type="checkbox"] {
             width: 16px;
             height: 16px;
+            accent-color: var(--primary, #667eea);
+            cursor: pointer;
+            flex-shrink: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .direction-check:has(input:checked) {
+            background: rgba(102, 126, 234, 0.15);
+            border-left: 3px solid var(--primary, #667eea);
+            padding-left: 5px;
         }
 
         .feedback-msg {
@@ -276,8 +425,8 @@
         .spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid #334155;
-            border-top-color: #667eea;
+            border: 3px solid rgba(255, 255, 255, 0.25);
+            border-top-color: #fff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 15px;
@@ -299,33 +448,35 @@
             .rating-value { font-size: 1.2rem; }
             .rating-option { min-width: 50px; padding: 8px 4px; }
             .rating-label { font-size: 0.55rem; }
-            .hero-illustration { top: 38%; width: min(260px, 65vw); height: min(260px, 65vw); }
+            .corner-logo { top: 10px; right: 10px; width: min(64px, 18vw); }
         }
     </style>
 </head>
 <body>
 
-    <div class="hero-background" aria-hidden="true"></div>
-
-    <div class="hero-illustration" id="heroLogo">
-        <img src="/static/logo-gud.png" alt="Государственный университет «Дубна»" class="hero-logo">
+    <div class="corner-logo" aria-hidden="false">
+        <img id="startLogoImg" src="/static/logo-gud.png" alt="Логотип вуза">
     </div>
+
+    <div class="hero-background" aria-hidden="true"></div>
 
     <div class="hero-badge" id="heroBadge" style="display: none;">Университет «Дубна»</div>
 
-    <div class="gradient-overlay" aria-hidden="true"></div>
-
     <div id="app"></div>
 
-    <div id="startScreen" class="start-screen">
-        <div style="text-align: center; padding: 20px;">
-            <img src="/static/logo-gud.png" alt="Университет Дубна" style="width:min(140px,40vw); margin-bottom:20px;">
-            <h1 style="color: white; margin-bottom: 15px;">CareerAI</h1>
-            <p style="color: #cbd5e1; margin-bottom: 30px; max-width: 320px;">
+    <div id="startScreen" class="start-screen" style="display:none;">
+        <div style="display: flex; flex-direction: column; align-items: center; padding: 20px;">
+            <h1 class="start-title" id="startTitle">CareerAI</h1>
+            <p class="start-tagline" id="startTagline">
                 Подберём направления подготовки Университета «Дубна» под ваши интересы
             </p>
             <button class="start-button" id="startButton" type="button">Начать опрос</button>
         </div>
+    </div>
+
+    <div id="loadingScreen" class="start-screen" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <div class="spinner" style="width:60px; height:60px; border-width:4px;"></div>
+        <div style="color:#fff; margin-top:20px; font-size:1.1rem;">Загрузка...</div>
     </div>
 
     <script>
@@ -333,29 +484,165 @@
         let currentRating = null;
         let isProcessing = false;
         let allDirections = [];
+        let customFirst = false;
+        let heroImageFromSettings = '';
+
+        const PROGRESS_KEY = 'careerai_progress';
+
+        function saveProgress(progress) {
+            try {
+                localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress || {}));
+            } catch (e) {}
+        }
+
+        function restoreProgress() {
+            try {
+                const saved = localStorage.getItem(PROGRESS_KEY);
+                return saved ? JSON.parse(saved) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function clearProgress() {
+            try { localStorage.removeItem(PROGRESS_KEY); } catch (e) {}
+        }
 
         const heroBadge = document.getElementById('heroBadge');
 
+        function shade(hex, percent = -18) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const r = Math.min(255, Math.max(0, (num >> 16) + amt));
+            const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amt));
+            const b = Math.min(255, Math.max(0, (num & 0xff) + amt));
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+        }
+
         async function loadDirections() {
             try {
-                const resp = await fetch('/api/directions');
+                const resp = await fetch('/api/v1/directions');
                 const data = await resp.json();
-                allDirections = data.directions || [];
+                allDirections = (data.directions || []).map(d => d.name || d);
             } catch (e) {
                 console.warn('Не удалось загрузить список направлений', e);
             }
         }
         loadDirections();
 
+        function mediaUrl(p) {
+            if (!p || typeof p !== 'string' || !p.trim()) return '';
+            if (/^https?:\/\//i.test(p) || /^[a-zA-Z]:[\\/]/.test(p) || p.indexOf('\\') !== -1) return '';
+            // Убедимся что путь начинается с /media/
+            let path = p.trim();
+            if (path.indexOf('/media/') !== 0) {
+                path = '/media/' + path;
+            }
+            return path;
+        }
+
+        async function loadSettings() {
+            try {
+                const resp = await fetch('/api/v1/settings?t=' + Date.now());
+                const data = await resp.json();
+                const s = data.settings || {};
+
+                customFirst = s.custom_form_position !== 'end';
+                const sb = document.getElementById('startButton');
+                if (sb) {
+                    sb.textContent = customFirst ? 'Заполнить анкету' : 'Начать опрос';
+                }
+
+                if (s.university_name) {
+                    heroBadge.textContent = s.university_name;
+                    const st = document.getElementById('startTitle');
+                    if (st) st.textContent = s.university_name;
+                }
+
+                if (s.tagline) {
+                    const st2 = document.getElementById('startTagline');
+                    if (st2) st2.textContent = s.tagline;
+                }
+
+                if (s.logo_path && mediaUrl(s.logo_path)) {
+                    const logoUrl = mediaUrl(s.logo_path);
+                    const startLogo = document.getElementById('startLogoImg');
+                    if (startLogo) {
+                        startLogo.src = logoUrl;
+                        startLogo.parentElement.style.display = 'flex';
+                    }
+                } else {
+                    const startLogo = document.getElementById('startLogoImg');
+                    if (startLogo && startLogo.parentElement) {
+                        startLogo.parentElement.style.display = 'none';
+                    }
+                }
+
+                if (s.primary_color) {
+                    let c = s.primary_color.startsWith('#') ? s.primary_color : '#' + s.primary_color;
+                    let hex = c.replace('#', '');
+
+                    // Извлекаем alpha из 8-значного hex (#RRGGBBAA) если есть
+                    let alpha = s.primary_alpha ?? 1;
+                    if (hex.length === 8) {
+                        alpha = parseInt(hex.slice(6, 8), 16) / 255;
+                        hex = hex.slice(0, 6);
+                    }
+                    c = '#' + hex;
+
+                    const d = shade(c);
+
+                    const num = parseInt(hex, 16);
+                    const r = (num >> 16) & 255;
+                    const g = (num >> 8) & 255;
+                    const b = num & 255;
+
+                    const dr = Math.round(r * 0.7);
+                    const dg = Math.round(g * 0.6);
+                    const db = Math.round(b * 0.9);
+
+                    const root = document.documentElement.style;
+                    root.setProperty('--primary', c);
+                    root.setProperty('--primary-dark', d);
+                    root.setProperty('--primary-soft', `rgba(${r}, ${g}, ${b}, ${alpha * 0.35})`);
+                    root.setProperty('--primary-dark-soft', `rgba(${dr}, ${dg}, ${db}, ${alpha * 0.25})`);
+                    root.setProperty('--primary-bg', `rgba(${r}, ${g}, ${b}, ${alpha * 0.95})`);
+                }
+
+                if (s.hero_image_path && mediaUrl(s.hero_image_path)) {
+                    heroImageFromSettings = mediaUrl(s.hero_image_path);
+                    document.documentElement.style.setProperty('--hero-image', `url('${heroImageFromSettings}')`);
+                }
+
+                const loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) loadingScreen.style.display = 'none';
+                const startScreen = document.getElementById('startScreen');
+                if (startScreen) startScreen.style.display = 'flex';
+
+            } catch (e) {
+                console.warn('Не удалось загрузить настройки вуза', e);
+                const loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) loadingScreen.style.display = 'none';
+                const startScreen = document.getElementById('startScreen');
+                if (startScreen) startScreen.style.display = 'flex';
+            }
+        }
+        loadSettings();
+
         async function startSurvey() {
             document.getElementById('startScreen').style.display = 'none';
             showHero(true);
+            // Восстановить фон из настроек
+            if (heroImageFromSettings) {
+                document.documentElement.style.setProperty('--hero-image', `url('${heroImageFromSettings}')`);
+            }
             showLoading();
             try {
-                const resp = await fetch('/api/start', { method: 'POST' });
+                const resp = await fetch('/api/v1/start', { method: 'POST' });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const data = await resp.json();
                 sessionId = data.session_id;
+                saveProgress(data.progress);
                 showQuestion(data.question, data);
             } catch (e) {
                 console.error(e);
@@ -364,6 +651,15 @@
         }
 
         function showQuestion(q, progress) {
+            saveProgress(progress?.progress || null);
+            const pct = getProgressPercent(progress);
+            const imgUrl = (q && q.image_url && mediaUrl(q.image_url)) || '';
+            // Если у вопроса есть картинка — фон = картинка вопроса, иначе — фон из настроек
+            if (imgUrl) {
+                document.documentElement.style.setProperty('--hero-image', `url('${imgUrl}')`);
+            } else if (heroImageFromSettings) {
+                document.documentElement.style.setProperty('--hero-image', `url('${heroImageFromSettings}')`);
+            }
             let html = `
                 <div class="question-panel">
                     <div class="progress-container">
@@ -372,16 +668,31 @@
                             <span>${progress?.progress?.current || 0}/${progress?.progress?.total || 0}</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${getProgressPercent(progress)}%"></div>
+                            <div class="progress-fill" style="width: ${pct}%"></div>
                         </div>
                     </div>
                     <div class="question-text">${escapeHtml(q.text)}</div>
             `;
 
-            if (progress && progress.is_salary) {
+            if (q.is_custom) {
+                showCustomForm(q, progress);
+                return;
+            }
+
+            if (q.is_ege_select || progress?.is_ege_select) {
+                showEgeSelectForm(q, progress);
+                return;
+            }
+
+            if (q.is_ege || q.type === 'ege') {
+                showEgeForm(q, progress);
+                return;
+            }
+
+            if ((q && q.is_salary) || (progress && progress.is_salary)) {
                 html += `
                     <input type="number" class="salary-input" id="salaryInput" placeholder="100000" value="100000">
-                    <button class="next-btn" id="nextBtn" type="button">Получить рекомендации</button>
+                    <button class="next-btn" id="nextBtn" type="button">Выбрать предметы ЕГЭ</button>
                 </div>`;
                 document.getElementById('app').innerHTML = html;
                 document.getElementById('nextBtn').onclick = () => {
@@ -419,11 +730,12 @@
                     }
                 };
             }
-
         }
 
         function showHero(show) {
             heroBadge.style.display = show ? 'block' : 'none';
+            const hl = document.getElementById('heroLogo');
+            if (hl) hl.style.display = show ? 'flex' : 'none';
         }
 
         function escapeHtml(text) {
@@ -436,9 +748,209 @@
             const names = {
                 screening: 'Шаг 1/3: Интересы',
                 detailed: 'Шаг 2/3: Углублённо',
-                personal: 'Шаг 3/3: Личные качества'
+                personal: 'Шаг 3/3: Личные качества',
+                salary: 'Зарплата',
+                ege_select: 'Выбор предметов ЕГЭ',
+                ege: 'Баллы ЕГЭ',
+                custom: 'Анкета'
             };
             return names[stage] || 'Опрос';
+        }
+
+        function customInput(f) {
+            const id = 'cf_' + f.code;
+            const type = f.field_type || f.type;
+            if (type === 'select') {
+                const opts = (f.options || []).map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+                return `<select class="custom-field" id="${id}" ${f.required ? 'required' : ''}><option value="">— выберите —</option>${opts}</select>`;
+            }
+            if (type === 'checkbox') {
+                return `<input type="checkbox" id="${id}" style="width:auto; transform:scale(1.4); margin:8px 0;">`;
+            }
+            if (type === 'date') {
+                return `<input type="date" class="custom-field" id="${id}" ${f.required ? 'required' : ''}>`;
+            }
+            const attrs = { text: 'text', email: 'email', phone: 'tel', number: 'number' };
+            const t = attrs[type] || 'text';
+            const ph = type === 'email' ? 'name@example.ru'
+                : type === 'phone' ? '+7 ___ ___-__-__'
+                : 'Введите значение';
+            const im = type === 'email' ? ' inputmode="email"' : type === 'phone' ? ' inputmode="tel"' : '';
+            return `<input type="${t}" class="custom-field" id="${id}" placeholder="${ph}"${im} ${f.required ? 'required' : ''}>`;
+        }
+
+        async function showCustomForm(q) {
+            const isStart = customFirst;
+            const fieldsHtml = (q.fields || []).map(f => `
+                <div style="margin-bottom:16px; text-align:left;">
+                    <label class="custom-label">${escapeHtml(f.label)}${f.required ? ' <span style="color:#f87171">*</span>' : ''}</label>
+                    ${customInput(f)}
+                </div>`).join('');
+            const consent = q.consent_text || 'Я даю согласие на обработку персональных данных';
+            let html = `
+                <div class="question-panel" style="max-height:84vh; overflow-y:auto;">
+                    <div class="progress-container">
+                        <div class="progress-info"><span>Анкета абитуриента</span></div>
+                    </div>
+                    <div class="question-text">${escapeHtml(q.text)}</div>
+                    <div id="customFields" style="margin-bottom:14px;">${fieldsHtml}</div>
+                    <label class="consent-box">
+                        <input type="checkbox" id="consentCheck">
+                        <span>${escapeHtml(consent)}</span>
+                    </label>
+                    <button class="next-btn" id="submitCustomBtn" type="button">${isStart ? 'Начать опрос' : 'Получить рекомендации'}</button>
+                    <div id="customError" class="error-text" style="color:#f87171; margin-top:10px; min-height:1em;"></div>
+                </div>`;
+            document.getElementById('app').innerHTML = html;
+
+            document.getElementById('submitCustomBtn').onclick = async () => {
+                const errBox = document.getElementById('customError');
+                errBox.textContent = '';
+                if (!document.getElementById('consentCheck').checked) {
+                    errBox.textContent = 'Необходимо согласие на обработку персональных данных';
+                    return;
+                }
+                const data = {};
+                for (const f of (q.fields || [])) {
+                    const el = document.getElementById('cf_' + f.code);
+                    if (!el) continue;
+                    const val = el.type === 'checkbox' ? el.checked : el.value.trim();
+                    if (f.required && !val) {
+                        errBox.textContent = 'Заполните обязательные поля';
+                        return;
+                    }
+                    if (val) {
+                        if (f.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) {
+                            errBox.textContent = 'Укажите корректный email';
+                            el.focus();
+                            return;
+                        }
+                        if (f.type === 'phone') {
+                            const digits = val.replace(/[^\d]/g, '');
+                            if (digits.length < 10 || digits.length > 15) {
+                                errBox.textContent = 'Укажите корректный телефон (например +7 900 000-00-00)';
+                                el.focus();
+                                return;
+                            }
+                        }
+                    }
+                    data[f.code] = val;
+                }
+                try {
+                    const resp = await fetch('/api/v1/survey-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: sessionId, data: data, consent: true })
+                    });
+                    const result = await resp.json();
+                    if (!resp.ok) throw new Error(result.detail || result.error || 'Ошибка отправки');
+                    if (result.done) {
+                        showResults(result.recommendations);
+                    } else if (result.question) {
+                        showQuestion(result.question, result);
+                    }
+                } catch (e) {
+                    errBox.textContent = e.message;
+                }
+            };
+        }
+
+        function showEgeSelectForm(q, progress) {
+            const subjects = q.subjects || [];
+            const html = `
+                <div class="question-panel" style="max-height:86vh; overflow-y:auto;">
+                    <div class="progress-container">
+                        <div class="progress-info">
+                            <span>${getStageName(progress?.progress?.stage)}</span>
+                            <span>Выбор предметов</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${getProgressPercent(progress)}%"></div>
+                        </div>
+                    </div>
+                    <div class="question-text">${escapeHtml(q.text)}</div>
+                    <div class="ege-grid" id="egeSelectGrid">
+                        ${subjects.map(s => `
+                            <div class="ege-field">
+                                <label>
+                                    <input type="checkbox" class="ege-select-check" data-code="${escapeHtml(s.code)}" style="width:18px; height:18px; accent-color: var(--primary, #667eea); cursor:pointer;">
+                                    ${escapeHtml(s.label)}
+                                </label>
+                            </div>`).join('')}
+                    </div>
+                    <button class="next-btn" id="submitEgeSelectBtn" type="button" disabled>Далее</button>
+                </div>`;
+            document.getElementById('app').innerHTML = html;
+
+            const checks = document.querySelectorAll('.ege-select-check');
+            checks.forEach(chk => {
+                chk.onchange = () => {
+                    const anyChecked = Array.from(checks).some(c => c.checked);
+                    document.getElementById('submitEgeSelectBtn').disabled = !anyChecked;
+                };
+            });
+
+            document.getElementById('submitEgeSelectBtn').onclick = async () => {
+                if (isProcessing) return;
+                const selected = [...document.querySelectorAll('.ege-select-check:checked')]
+                    .map(el => el.dataset.code);
+                if (selected.length === 0) {
+                    alert('Выберите хотя бы один предмет');
+                    return;
+                }
+                submitAnswer('ege_select', selected);
+            };
+        }
+
+        function showEgeForm(q, progress) {
+            const subjects = q.subjects || [];
+            const html = `
+                <div class="question-panel" style="max-height:86vh; overflow-y:auto;">
+                    <div class="progress-container">
+                        <div class="progress-info">
+                            <span>${getStageName(progress?.progress?.stage)}</span>
+                            <span>Баллы 0–100</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${getProgressPercent(progress)}%"></div>
+                        </div>
+                    </div>
+                    <div class="question-text">${escapeHtml(q.text)}</div>
+                    <div class="ege-grid">
+                        ${subjects.map(s => `
+                            <div class="ege-field">
+                                <label>${escapeHtml(s.label)}</label>
+                                <input type="number" min="0" max="100" step="1" placeholder="0"
+                                       id="ege_${escapeHtml(s.code)}" inputmode="numeric">
+                            </div>`).join('')}
+                    </div>
+                    <button class="next-btn" id="submitEgeBtn" type="button">Получить рекомендации</button>
+                    <div id="egeError" class="error-text" style="color:#f87171; margin-top:10px; min-height:1em;"></div>
+                </div>`;
+            document.getElementById('app').innerHTML = html;
+
+            document.getElementById('submitEgeBtn').onclick = async () => {
+                if (isProcessing) return;
+                const errBox = document.getElementById('egeError');
+                errBox.textContent = '';
+                const values = {};
+                let bad = false;
+                for (const s of subjects) {
+                    const el = document.getElementById('ege_' + s.code);
+                    const raw = el ? el.value.trim() : '';
+                    if (!raw) { values[s.code] = 0; continue; }
+                    const num = parseInt(raw, 10);
+                    if (isNaN(num) || num < 0 || num > 100) {
+                        errBox.textContent = 'Баллы должны быть от 0 до 100';
+                        el.focus();
+                        bad = true;
+                        break;
+                    }
+                    values[s.code] = num;
+                }
+                if (bad) return;
+                submitAnswer('ege', values);
+            };
         }
 
         function getProgressPercent(progress) {
@@ -453,7 +965,7 @@
             isProcessing = true;
             showLoading();
             try {
-                const resp = await fetch('/api/answer', {
+                const resp = await fetch('/api/v1/answer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ session_id: sessionId, question_id: qId, answer: ans })
@@ -462,6 +974,7 @@
                 if (data.done) {
                     showResults(data.recommendations);
                 } else if (data.question) {
+                    saveProgress(data.progress);
                     showQuestion(data.question, data);
                 } else {
                     showError('Ошибка сервера');
@@ -485,30 +998,27 @@
         function showResults(recommendations) {
             showHero(false);
             document.body.classList.add('results-open');
-
-            const colors = {
-                IDEAL: '#10b981',
-                EXCELLENT: '#3b82f6',
-                GOOD: '#f59e0b',
-                AVERAGE: '#8b5cf6',
-                LOW: '#ef4444'
-            };
+            clearProgress();
+            // Восстановить фон из настроек
+            if (heroImageFromSettings) {
+                document.documentElement.style.setProperty('--hero-image', `url('${heroImageFromSettings}')`);
+            }
 
             let html = `
                 <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #0f172a; z-index: 10; overflow-y: auto; padding: 20px;">
-                    <h2 style="color: white; text-align: center; margin-bottom: 20px;">🎓 Ваши рекомендации</h2>`;
+                    <h2 style="color: white; text-align: center; margin-bottom: 20px;">Ваши рекомендации</h2>`;
 
             for (const rec of recommendations) {
+                const imgUrl = (rec.image && mediaUrl(rec.image)) || '';
                 html += `
                     <div style="background: #1e293b; border-radius: 20px; padding: 20px; margin-bottom: 15px;">
+                        ${imgUrl ? `<img src="${imgUrl}" alt="${escapeHtml(rec.field)}" style="width:100%; max-height:160px; object-fit:cover; border-radius:12px; margin-bottom:12px;" onerror="this.style.display='none'">` : ''}
                         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                            <div style="background: linear-gradient(135deg, #667eea, #764ba2); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">${rec.rank}</div>
+                            <div style="background: linear-gradient(135deg, var(--primary), var(--primary-dark)); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white;">${rec.rank}</div>
                             <div style="font-size: 1rem; font-weight: 600; color: white; flex: 1;">${escapeHtml(rec.field)}</div>
-                            <div style="font-size: 1.1rem; font-weight: 700; color: #f59e0b;">${rec.probability}%</div>
-                            <div style="padding: 4px 12px; border-radius: 20px; background: ${colors[rec.match_level] || '#64748b'}; color: white; font-size: 0.75rem;">${rec.match_level}</div>
                         </div>
-                        ${rec.explanation ? `<div style="margin-top: 10px; color: #cbd5e1; font-size: 0.85rem;">💡 ${escapeHtml(rec.explanation)}</div>` : ''}
-                        ${rec.key_skills ? `<div style="margin-top: 8px; color: #94a3b8; font-size: 0.75rem;">🔧 ${escapeHtml(rec.key_skills)}</div>` : ''}
+                        ${rec.explanation ? `<div style="margin-top: 12px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; color: #cbd5e1; font-size: 0.9rem; line-height: 1.5;">${escapeHtml(rec.explanation)}</div>` : ''}
+                        ${rec.key_skills ? `<div style="margin-top: 8px; color: #64748b; font-size: 0.8rem;"><strong>Ключевые навыки:</strong> ${escapeHtml(rec.key_skills)}</div>` : ''}
                     </div>`;
             }
 
@@ -523,7 +1033,7 @@
                             ${allDirections.map(d => `
                                 <label class="direction-check">
                                     <input type="checkbox" name="chosen_direction" value="${escapeHtml(d)}">
-                                    <span>${escapeHtml(d)}</span>
+                                    ${escapeHtml(d)}
                                 </label>
                             `).join('')}
                         </div>
@@ -542,6 +1052,9 @@
 
             html += `
                     <button type="button" onclick="location.reload()" style="width: 100%; padding: 14px; background: #334155; color: white; border: none; border-radius: 40px; margin: 20px 0 40px; cursor: pointer;">Пройти заново</button>
+                    <div style="text-align: center; padding: 16px; color: #64748b; font-size: 0.8rem;">
+                        Рекомендации основаны на анализе ваших ответов и навыков
+                    </div>
                 </div>`;
 
             document.getElementById('app').innerHTML = html;
@@ -568,7 +1081,7 @@
                         return;
                     }
                     try {
-                        const resp = await fetch('/api/feedback', {
+                        const resp = await fetch('/api/v1/feedback', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -599,7 +1112,12 @@
                 </div>`;
         }
 
-        document.getElementById('startButton').addEventListener('click', startSurvey);
+        document.addEventListener('DOMContentLoaded', () => {
+            const sb = document.getElementById('startButton');
+            if (sb) {
+                sb.addEventListener('click', startSurvey);
+            }
+        });
     </script>
 </body>
 </html>

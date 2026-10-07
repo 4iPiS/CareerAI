@@ -1,0 +1,324 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --bg: #f1f5f9;
+    --panel: #ffffff;
+    --border: #e2e8f0;
+    --primary: #667eea;
+    --primary-dark: #5a67d8;
+    --text: #1e293b;
+    --muted: #64748b;
+    --danger: #dc2626;
+    --ok: #16a34a;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+/* --- login --- */
+.login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+.login-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    width: min(360px, 90vw);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    text-align: center;
+}
+.login-card h1 { color: var(--primary); margin-bottom: 4px; }
+.login-card p { color: var(--muted); margin-bottom: 24px; }
+.login-card input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 1rem;
+}
+.login-card button {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.error-text { color: var(--danger); margin-top: 10px; min-height: 1.2em; }
+
+/* --- shell --- */
+.shell { display: flex; min-height: 100vh; }
+.sidebar {
+    width: 230px;
+    background: #0f172a;
+    color: #cbd5e1;
+    padding: 20px 12px;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+.sidebar .brand {
+    color: white;
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding: 0 10px 18px;
+    border-bottom: 1px solid #1e293b;
+    margin-bottom: 14px;
+}
+.sidebar nav a {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #cbd5e1;
+    text-decoration: none;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+.sidebar nav a:hover { background: #1e293b; color: white; }
+.sidebar nav a.active { background: var(--primary); color: white; }
+.sidebar .logout {
+    margin-top: auto;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.content { flex: 1; padding: 28px; overflow-x: auto; }
+.loader { color: var(--muted); }
+
+/* --- cards & tables --- */
+.cards { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    min-width: 180px;
+    flex: 1;
+}
+.card .num { font-size: 2rem; font-weight: 700; color: var(--primary); }
+.card .lbl { color: var(--muted); font-size: 0.9rem; }
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+.panel h2 { margin-bottom: 14px; font-size: 1.15rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; }
+tr:hover td { background: #f8fafc; }
+
+.badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.badge.success { background: #dcfce7; color: var(--ok); }
+.badge.failed { background: #fee2e2; color: var(--danger); }
+.badge.pending, .badge.running { background: #fef9c3; color: #a16207; }
+
+/* --- forms --- */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 4px; }
+input, select, textarea {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-family: inherit;
+}
+textarea { min-height: 70px; resize: vertical; }
+input::placeholder, textarea::placeholder { color: #7dd3fc; opacity: 0.8; font-size: 0.85rem; }
+button.btn {
+    padding: 9px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+button.btn.small { padding: 5px 10px; font-size: 0.8rem; }
+button.btn.danger { background: var(--danger); }
+button.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+button.btn.active { background: var(--primary, #667eea); border-color: var(--primary, #667eea); color: #fff; }
+.row-actions { display: flex; gap: 6px; }
+
+.topbar { display: flex; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+.topbar h1 { font-size: 1.4rem; margin: 0 auto; }
+.topbar > div { margin-left: auto; }
+.muted { color: var(--muted); font-size: 0.85rem; }
+
+.preview-img { max-width: 120px; max-height: 80px; border-radius: 6px; border: 1px solid var(--border); }
+.url-chip {
+    display: inline-block;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+/* --- media picker modal --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+.modal {
+    background: var(--panel);
+    border-radius: 16px;
+    width: min(720px, 94vw);
+    max-height: 82vh;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+.modal h3 { margin-bottom: 12px; }
+.modal-list { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.modal-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px;
+    cursor: pointer;
+    text-align: center;
+}
+.modal-item:hover { border-color: var(--primary); background: #f8fafc; }
+.modal-item img, .modal-item video {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 6px;
+    background: #e2e8f0;
+}
+.modal-item .fname { font-size: 0.7rem; color: var(--muted); margin-top: 6px; word-break: break-all; }
+.modal-empty { color: var(--muted); padding: 20px; text-align: center; }
+.pick-btn {
+    margin-left: 6px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    background: #f1f5f9;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.pick-btn:hover { border-color: var(--primary); }
+
+/* --- варианты ответов --- */
+.opt-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.opt-num {
+    min-width: 22px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: white;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.opt-val {
+    flex: 1;
+    min-width: 0;
+}
+.opt-del {
+    width: 28px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.opt-del:hover { background: #fee2e2; border-color: var(--danger); }
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.direction-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.direction-check input {
+    width: auto;
+    transform: scale(1.1);
+}
+
+/* Чекбокс рядом с текстом — не растягивать на всю ширину */
+label.check-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0;
+}
+label.check-inline input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    flex-shrink: 0;
+    transform: none;
+}
+
+@media (max-width: 800px) {
+    .shell { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; }
+    .content { padding: 16px; }
+}

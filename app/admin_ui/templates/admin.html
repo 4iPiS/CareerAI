@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareerAI — Админ-панель</title>
+    <link rel="stylesheet" href="/admin-static/admin.css">
+</head>
+<body>
+    <div id="loginScreen" class="login-screen hidden">
+        <div class="login-card">
+            <h1>CareerAI</h1>
+            <p>Админ-панель</p>
+            <input type="text" id="loginUsername" placeholder="Логин" autocomplete="username">
+            <input type="password" id="loginPassword" placeholder="Пароль" autocomplete="current-password">
+            <button id="loginBtn" type="button">Войти</button>
+            <div id="loginError" class="error-text"></div>
+        </div>
+    </div>
+
+    <div id="appShell" class="shell hidden">
+        <aside class="sidebar">
+            <div class="brand">CareerAI<br><small>админ-панель</small></div>
+            <nav>
+                <a href="#" data-view="dashboard" class="active">Дашборд</a>
+                <a href="#" data-view="directions">Направления</a>
+                <a href="#" data-view="features">Признаки</a>
+                <a href="#" data-view="questions">Вопросы</a>
+                <a href="#" data-view="custom">Анкета вуза</a>
+                <a href="#" data-view="media">Медиатека</a>
+                <a href="#" data-view="settings">Настройки</a>
+                <a href="#" data-view="users">Пользователи</a>
+                <a href="#" data-view="responses">Ответы</a>
+            </nav>
+            <button id="logoutBtn" class="logout" type="button">Выйти</button>
+        </aside>
+        <main class="content" id="content"></main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="/admin-static/admin.js?v=41"></script>
+</body>
+</html>

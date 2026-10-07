@@ -1,15 +1,118 @@
+networks:
+  default:
+    driver: bridge
+
 services:
-  career-ai:
+  db:
+    image: postgres:16-alpine
+    container_name: careerai-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-careerai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-careerai}
+      POSTGRES_DB: ${POSTGRES_DB:-careerai}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-careerai} -d ${POSTGRES_DB:-careerai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  app:
     build: .
     container_name: career-ai
-    ports:
-      - "7777:7777"
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       HOST: "0.0.0.0"
       PORT: "7777"
+      DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER:-careerai}:${POSTGRES_PASSWORD:-careerai}@db:5432/${POSTGRES_DB:-careerai}"
+      SECRET_KEY: "${SECRET_KEY:-change-me-in-production}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      ENVIRONMENT: "${ENVIRONMENT:-production}"
+      DOMAIN: "${DOMAIN:-localhost}"
+      INITIAL_ADMIN_USERNAME: "${INITIAL_ADMIN_USERNAME:-admin}"
+      INITIAL_ADMIN_PASSWORD: "${INITIAL_ADMIN_PASSWORD:-admin123}"
       TF_CPP_MIN_LOG_LEVEL: "3"
       PYTHONUNBUFFERED: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7777/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     volumes:
       - ./data:/app/data
       - ./output:/app/output
+      - media_data:/app/media
+      - models_data:/app/models
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+    ports:
+      - "7777:7777"
+
+  nginx:
+    build: ./nginx
+    container_name: careerai-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - app
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  certbot:
+    image: certbot/certbot
+    container_name: careerai-certbot
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Сертификаты выдаются вручную один раз: ./nginx/init-letsencrypt.sh
+    # Автообновление: docker compose run --rm certbot renew --webroot -w /var/www/certbot
+
+volumes:
+  pgdata:
+  media_data:
+  models_data:
+  certbot_conf:
+  certbot_www:

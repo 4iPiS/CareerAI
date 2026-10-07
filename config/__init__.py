@@ -16,7 +16,6 @@ from config.model_config import (
     UNIVERSITY_URL,
     ABITUR_URL,
     DIRECTIONS_SOURCE,
-    MODEL_DIR,
 )
 
 __all__ = [
@@ -34,5 +33,4 @@ __all__ = [
     "UNIVERSITY_URL",
     "ABITUR_URL",
     "DIRECTIONS_SOURCE",
-    "MODEL_DIR",
 ]

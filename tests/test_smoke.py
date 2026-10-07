@@ -1,75 +1,38 @@
-"""Базовые проверки конфигурации и (при наличии) обученной модели."""
+"""Базовые проверки конфигурации: направления и признаки.
 
-from pathlib import Path
-
-import pandas as pd
-import pytest
+Два слоя каталога:
+- базовый (config/model_config.py) — 21 агрегированное направление, 32 признака;
+- продакшен-слой (стартовые скрипты) — 31 активная программа (профили), 43 признака.
+"""
 
 from config.model_config import (
     DIRECTION_KEY_SKILLS,
     DUBNA_DIRECTION_KEYS,
     EXPANDED_FEATURES,
 )
-from career_core import CareerAdvisor, profile_from_dataframe
-from train_model import generate_training_data
 
 
-def test_directions_and_features_consistency():
-    assert len(DUBNA_DIRECTION_KEYS) == 19
-    assert len(EXPANDED_FEATURES) == 27
+def test_base_catalog_consistency():
+    """Базовый слой сида: 21 агрегированное направление + 32 признака."""
+    assert len(DUBNA_DIRECTION_KEYS) == 21
+    assert len(EXPANDED_FEATURES) == 32
     assert set(DIRECTION_KEY_SKILLS.keys()) == set(DUBNA_DIRECTION_KEYS)
 
 
-def test_training_data_generation():
-    df, labels = generate_training_data()
-    assert len(df) > 1000
-    assert len(labels) == len(df)
-    for col in EXPANDED_FEATURES:
-        assert col in df.columns
+def test_production_catalog_has_31_programs_and_43_features():
+    """Продакшен-каталог после стартовых скриптов: 31 программа, 43 признака."""
+    from scripts.add_ege import EGE_FEATURES
+    from scripts.sync_directions import PROGRAMS
 
+    assert len(PROGRAMS) == 31
+    assert len(EGE_FEATURES) == 11
+    # 32 базовых признака + 11 признаков ЕГЭ
+    assert len(EXPANDED_FEATURES) + len(EGE_FEATURES) == 43
 
-def test_profile_defaults_from_partial_csv(tmp_path):
-    partial = {EXPANDED_FEATURES[0]: 5.0, 'desired_salary': 120000}
-    df = pd.DataFrame([partial])
-    profile = profile_from_dataframe(df)
-    assert profile[EXPANDED_FEATURES[0]] == 5.0
-    assert profile['computer_systems'] == 3.0
-
-
-def test_data_collector_writes_csv(tmp_path, monkeypatch):
-    import data_collector as dc
-
-    monkeypatch.setattr(dc, 'REAL_DATA_DIR', tmp_path)
-    monkeypatch.setattr(dc, 'RESPONSES_CSV', tmp_path / 'responses.csv')
-
-    profile = {f: 3.0 for f in EXPANDED_FEATURES}
-    profile['software_development'] = 5.0
-    recs = [{'field': 'Программная инженерия', 'probability': 90.0, 'rank': 1}]
-    dc.save_response('test_sess', profile, recs)
-    dc.update_labels('test_sess', ['Программная инженерия'], feedback_score=4)
-
-    assert (tmp_path / 'responses.csv').exists()
-    rows = dc._read_all_rows()
-    assert len(rows) == 1
-    assert rows[0]['chosen_fields'] == 'Программная инженерия'
-    assert rows[0]['software_development'] == '5.0'
-
-
-@pytest.mark.skipif(
-    not Path('career_model/career_model.keras').exists(),
-    reason='Модель не обучена — запустите python train_model.py',
-)
-def test_prediction_on_example_profile():
-    advisor = CareerAdvisor()
-    advisor.load_model()
-    df = pd.read_csv('examples/student_it_profile.csv')
-    recommendations, _, _ = advisor.get_recommendations(df)
-    assert len(recommendations) == 5
-    fields = {rec['field'] for rec in recommendations}
-    it_related = {
-        'Программная инженерия',
-        'Информатика и вычислительная техника',
-        'Прикладная информатика',
-        'Информационные системы и технологии',
-    }
-    assert fields & it_related
+    names = {p[0] for p in PROGRAMS}
+    assert len(names) == len(PROGRAMS)  # без дубликатов имён
+    for _name, code, years, _ege, skills in PROGRAMS:
+        assert len(code.replace('.', '')) == 6  # код ФГОС вида 00.00.00
+        assert years in (4, 5)  # срок обучения
+        assert skills  # у каждой программы есть ключевые навыки
+        assert all(s in EXPANDED_FEATURES for s in skills)

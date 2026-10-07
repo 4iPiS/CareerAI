@@ -1,13 +1,14 @@
 #!/bin/sh
 set -e
 
-MODEL_FILE="/app/career_model/career_model.keras"
+echo ">>> Применение миграций (если есть) ..."
+alembic upgrade head 2>/dev/null || echo "    (версий миграций нет — пропуск)"
 
-if [ ! -f "$MODEL_FILE" ]; then
-  echo ">>> Модель не найдена ($MODEL_FILE)."
-  echo ">>> Обучение при первом запуске (может занять несколько минут)..."
-  python train_model.py
-fi
+echo ">>> Сид конфигурации (идемпотентно) ..."
+python scripts/seed.py
 
-echo ">>> Запуск CareerAI на ${HOST:-0.0.0.0}:${PORT:-7777}"
-exec python -m uvicorn main:app --host "${HOST:-0.0.0.0}" --port "${PORT:-7777}"
+echo ">>> Миграция старых CSV-ответов (если есть) ..."
+python scripts/migrate_responses.py data/real/responses.csv || true
+
+echo ">>> Запуск CareerAI Platform на ${HOST:-0.0.0.0}:${PORT:-7777}"
+exec python -m uvicorn app.main:app --host "${HOST:-0.0.0.0}" --port "${PORT:-7777}"

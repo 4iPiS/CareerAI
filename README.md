@@ -2,7 +2,7 @@
 
 Веб-платформа для профессиональной ориентации студентов и абитуриентов. Рекомендует направления подготовки бакалавриата на основе профиля навыков, интересов и результатов ЕГЭ с помощью нейросетевой модели.
 
-## 🎯 Возможности
+## Возможности
 
 ### Публичный опросник
 - **Адаптивный опрос** — вопросы ветвятся на основе предыдущих ответов
@@ -25,24 +25,24 @@
 - **Версионирование** — сохранение артефактов (модель, scaler, mlb, config.json)
 - **Объяснимость** — каждое направление получает объяснение соответствия
 
-## 🚀 Быстрый старт (Docker)
+## Быстрый старт (Docker)
 
 ```bash
 # 1. Копирование конфигурации
 cp .env.example .env
 
 # 2. Заполнение переменных окружения
-#    - POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
-#    - SECRET_KEY (сгенерируйте надёжный)
-#    - DOMAIN (домен для production)
+# - POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+# - SECRET_KEY (сгенерируйте надёжный)
+# - DOMAIN (домен для production)
 
 # 3. Запуск
 docker compose up -d db app
 
 # 4. Открытие в браузере
-#    Опросник: http://localhost:7777/
-#    Админ-панель: http://localhost:7777/admin (admin / admin123)
-#    Swagger API: http://localhost:7777/docs
+# Опросник: http://localhost:7777/
+# Админ-панель: http://localhost:7777/admin (admin / admin123)
+# Swagger API: http://localhost:7777/docs
 ```
 
 ### HTTPS (продакшен)
@@ -58,14 +58,14 @@ docker compose up -d db app nginx
 15 3 * * * docker compose run --rm certbot renew --webroot -w /var/www/certbot && docker compose exec nginx nginx -s reload
 ```
 
-## 🛠️ Локальная разработка (без Docker)
+## Локальная разработка (без Docker)
 
 ```bash
 # 1. Установка зависимостей
 pip install -r requirements.txt
 
 # 2. Запуск PostgreSQL
-#    Убедитесь, что БД доступна по DATABASE_URL
+# Убедитесь, что БД доступна по DATABASE_URL
 
 # 3. Инициализация БД
 python scripts/seed.py
@@ -74,7 +74,7 @@ python scripts/seed.py
 python -m uvicorn app.main:app --port 7777 --reload
 ```
 
-## 📡 API
+## API
 
 ### Публичные эндпоинты (`/api/v1`)
 
@@ -114,7 +114,7 @@ python -m app.cli recommend examples/student_it_profile.csv
 python -m app.cli ask
 ```
 
-## 📁 Структура проекта
+## Структура проекта
 
 Каталог собирается двумя слоями:
 - **базовый** ([`config/model_config.py`](config/model_config.py)) — 21 агрегированное направление, 32 признака;
@@ -122,49 +122,49 @@ python -m app.cli ask
 
 ```
 CareerAI/
-├── app/                          # Основное приложение
-│   ├── main.py                   # Фабрика FastAPI (public + admin API + UI)
-│   ├── config.py                 # Настройки из env (pydantic-settings)
-│   ├── database.py               # Engine, SessionLocal, get_db
-│   ├── cli.py                    # CLI: рекомендации по CSV, консольный опросник
-│   ├── models/                   # ORM-модели SQLAlchemy
-│   ├── schemas/                  # Pydantic-схемы
-│   ├── services/                 # Бизнес-логика
-│   │   ├── questionnaire.py      # Движок опросника
-│   │   ├── recommender.py        # Предсказания модели
-│   │   ├── trainer.py            # Генерация данных и обучение
-│   │   ├── media.py              # Загрузка медиа
-│   │   ├── responses.py          # Экспорт ответов
-│   │   └── security.py           # JWT, хеширование
-│   ├── api/                      # Роутеры FastAPI
-│   └── admin_ui/                 # Админ-панель (JS SPA + статика)
-├── config/                       # Конфигурация каталога
-│   ├── model_config.py           # Направления, признаки, навыки (единый источник)
-│   ├── questions.py              # Вопросы опросника (сид)
-│   └── dubna_directions.py       # Карточки направлений (ЕГЭ, зарплата)
-├── scripts/                      # Стартовые и служебные скрипты
-│   ├── seed.py                   # Сид БД (вызывается при старте контейнера)
-│   ├── add_ege.py                # Блок ЕГЭ: признаки, группа, вопрос
-│   ├── sync_directions.py        # Каталог: 31 программа с сайта вуза
-│   ├── add_program_features.py   # Новые навыки (ИИ, кибербезопасность и др.)
-│   ├── update_questions.py       # Понятные формулировки вопросов
-│   ├── migrate_responses.py      # Миграция CSV-ответов в БД
-│   └── _dev/                     # DEV-утилиты (retrain и т.п.)
-├── migrations/                   # Alembic-миграции
-├── templates/                    # Шаблоны (index.html — публичный опросник)
-├── static/                       # Публичная статика (логотипы и т.п.)
-├── tests/                        # Тесты (SQLite in-memory, полный сид)
-├── nginx/                        # Nginx + Let's Encrypt
-├── docker/                       # entrypoint.sh
-├── docs/                         # Документация + screenshots/
-├── plans/                        # План развития платформы
-├── docker-compose.yml            # Docker-композиция (db, app, nginx, certbot)
-├── Dockerfile                    # Образ приложения
-├── requirements.txt              # Python-зависимости
-└── .env.example                  # Шаблон переменных окружения
+├── app/ # Основное приложение
+│ ├── main.py # Фабрика FastAPI (public + admin API + UI)
+│ ├── config.py # Настройки из env (pydantic-settings)
+│ ├── database.py # Engine, SessionLocal, get_db
+│ ├── cli.py # CLI: рекомендации по CSV, консольный опросник
+│ ├── models/ # ORM-модели SQLAlchemy
+│ ├── schemas/ # Pydantic-схемы
+│ ├── services/ # Бизнес-логика
+│ │ ├── questionnaire.py # Движок опросника
+│ │ ├── recommender.py # Предсказания модели
+│ │ ├── trainer.py # Генерация данных и обучение
+│ │ ├── media.py # Загрузка медиа
+│ │ ├── responses.py # Экспорт ответов
+│ │ └── security.py # JWT, хеширование
+│ ├── api/ # Роутеры FastAPI
+│ └── admin_ui/ # Админ-панель (JS SPA + статика)
+├── config/ # Конфигурация каталога
+│ ├── model_config.py # Направления, признаки, навыки (единый источник)
+│ ├── questions.py # Вопросы опросника (сид)
+│ └── dubna_directions.py # Карточки направлений (ЕГЭ, зарплата)
+├── scripts/ # Стартовые и служебные скрипты
+│ ├── seed.py # Сид БД (вызывается при старте контейнера)
+│ ├── add_ege.py # Блок ЕГЭ: признаки, группа, вопрос
+│ ├── sync_directions.py # Каталог: 31 программа с сайта вуза
+│ ├── add_program_features.py # Новые навыки (ИИ, кибербезопасность и др.)
+│ ├── update_questions.py # Понятные формулировки вопросов
+│ ├── migrate_responses.py # Миграция CSV-ответов в БД
+│ └── _dev/ # DEV-утилиты (retrain и т.п.)
+├── migrations/ # Alembic-миграции
+├── templates/ # Шаблоны (index.html — публичный опросник)
+├── static/ # Публичная статика (логотипы и т.п.)
+├── tests/ # Тесты (SQLite in-memory, полный сид)
+├── nginx/ # Nginx + Let's Encrypt
+├── docker/ # entrypoint.sh
+├── docs/ # Документация + screenshots/
+├── plans/ # План развития платформы
+├── docker-compose.yml # Docker-композиция (db, app, nginx, certbot)
+├── Dockerfile # Образ приложения
+├── requirements.txt # Python-зависимости
+└── .env.example # Шаблон переменных окружения
 ```
 
-## 🧠 ML-модель
+## ML-модель
 
 ### Архитектура
 
@@ -172,18 +172,18 @@ CareerAI/
 
 ```
 Input (N признаков)
-  │
-  ▼
+ │
+ ▼
 Dense(128, relu) → BatchNorm → Dropout(0.5)
-  │
-  ▼
+ │
+ ▼
 Dense(64, relu) → BatchNorm → Dropout(0.5)
-  │
-  ▼
+ │
+ ▼
 Dense(32, relu) → Dropout(0.3)
-  │
-  ▼
-Dense(M, sigmoid)  ← M = число направлений
+ │
+ ▼
+Dense(M, sigmoid) ← M = число направлений
 ```
 
 - **Вход**: вектор из N признаков (оценки навыков 1–5, зарплата, баллы ЕГЭ, общие качества)
@@ -247,7 +247,7 @@ Dense(M, sigmoid)  ← M = число направлений
 
 Каждый запуск обучения создаёт отдельную запись в `model_runs` с артефактами в `models/run_{id}/`. Рекомендатель всегда использует последнюю успешную версию, поэтому переобучение не ломает работающий сервис.
 
-## 🧪 Тестирование
+## Тестирование
 
 ```bash
 # Запуск всех тестов
@@ -262,7 +262,7 @@ pytest tests/ -v --cov=app --cov-report=html
 (сид + ЕГЭ-блок + 31 программу), поэтому проверяются реальные цифры каталога:
 43 признака и 31 активная программа.
 
-## 🔧 Конфигурация
+## Конфигурация
 
 Переменные окружения (`.env`):
 
@@ -279,23 +279,23 @@ pytest tests/ -v --cov=app --cov-report=html
 | `INITIAL_ADMIN_PASSWORD` | `admin123` | Пароль первого администратора |
 | `TF_CPP_MIN_LOG_LEVEL` | `3` | Уровень логов TensorFlow |
 
-## 📊 Архитектура
+## Архитектура
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Browser   │────▶│    Nginx     │────▶│   FastAPI   │
-│ (Опросник,  │     │ (Reverse     │     │   (App)     │
-│  Админка)   │     │  Proxy,      │     │             │
-└─────────────┘     │  HTTPS)      │     └──────┬──────┘
-                    └──────────────┘            │
-                                                │
-                    ┌──────────────┐     ┌──────▼──────┐
-                    │   Certbot    │     │  PostgreSQL  │
-                    │ (HTTPS Certs)│     │   (DB)       │
-                    └──────────────┘     └─────────────┘
+┌─────────────┐ ┌──────────────┐ ┌─────────────┐
+│ Browser │────▶│ Nginx │────▶│ FastAPI │
+│ (Опросник, │ │ (Reverse │ │ (App) │
+│ Админка) │ │ Proxy, │ │ │
+└─────────────┘ │ HTTPS) │ └──────┬──────┘
+ └──────────────┘ │
+ │
+ ┌──────────────┐ ┌──────▼──────┐
+ │ Certbot │ │ PostgreSQL │
+ │ (HTTPS Certs)│ │ (DB) │
+ └──────────────┘ └─────────────┘
 ```
 
-## 📝 Требования
+## Требования
 
 - **Python** 3.10+
 - **TensorFlow** ≥ 2.10 (для ML-модели)
@@ -303,27 +303,27 @@ pytest tests/ -v --cov=app --cov-report=html
 - **Docker** + **Docker Compose** (опционально, для упрощённого развёртывания)
 - **Nginx** (опционально, для production + HTTPS)
 
-## ⚠️ Важная информация
+## Важная информация
 
 1. **Безопасность**
-   - Стартовый администратор создаётся из `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` — **обязательно смените пароль после первого входа**
-   - В продакшене задайте надёжный `SECRET_KEY`, включите `COOKIE_SECURE=true` и используйте HTTPS через nginx
-   - Rate limiting на вход: 10 попыток в минуту
+ - Стартовый администратор создаётся из `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` — **обязательно смените пароль после первого входа**
+ - В продакшене задайте надёжный `SECRET_KEY`, включите `COOKIE_SECURE=true` и используйте HTTPS через nginx
+ - Rate limiting на вход: 10 попыток в минуту
 
 2. **Данные**
-   - Синтетические данные обучения — заготовка правил «навык → направление»
-   - Для качества нужна валидация на реальных анкетах и дообучение на собранных ответах
-   - Все ответы сохраняются в БД для аналитики и дообучения
+ - Синтетические данные обучения — заготовка правил «навык → направление»
+ - Для качества нужна валидация на реальных анкетах и дообучение на собранных ответах
+ - Все ответы сохраняются в БД для аналитики и дообучения
 
 3. **Масштабирование**
-   - Приложение stateless, можно запускать несколько воркеров uvicorn
-   - PostgreSQL поддерживает репликацию для чтения
-   - Nginx поддерживает upstream-группы для балансировки
+ - Приложение stateless, можно запускать несколько воркеров uvicorn
+ - PostgreSQL поддерживает репликацию для чтения
+ - Nginx поддерживает upstream-группы для балансировки
 
-## 📄 Лицензия
+## Лицензия
 
 [Укажите лицензию, если есть]
 
-## 👥 Контакты
+## Контакты
 
 [Укажите контакты разработчиков/поддержки]

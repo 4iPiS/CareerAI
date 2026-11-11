@@ -25,6 +25,8 @@ class UniversitySettings(Base, TimestampMixin):
         default='start',
         comment='Позиция анкеты вуза: start (в начале опроса) или end (в конце)',
     )
+    contact_email: Mapped[str] = mapped_column(String(255), default='')
+    support_phone: Mapped[str] = mapped_column(String(100), default='')
 
     def __repr__(self) -> str:
         return f'<UniversitySettings {self.university_name}>'

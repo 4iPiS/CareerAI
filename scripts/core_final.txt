@@ -1,0 +1,7 @@
+============================= test session starts =============================
+platform win32 -- Python 3.8.10, pytest-8.3.5, pluggy-1.5.0
+rootdir: C:\Users\Администратор\Desktop\Новая папка (2)\CareerAI
+plugins: anyio-4.5.2
+collected 0 items
+
+============================ no tests ran in 0.00s ============================

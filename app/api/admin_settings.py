@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Админ-API: настройки вуза."""
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -50,6 +52,8 @@ def _settings_out(s: UniversitySettings) -> dict:
         'primary_alpha': s.primary_alpha,
         'consent_text': s.consent_text,
         'custom_form_position': s.custom_form_position,
+        'contact_email': s.contact_email,
+        'support_phone': s.support_phone,
     }
 
 

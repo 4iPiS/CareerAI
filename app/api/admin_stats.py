@@ -11,7 +11,7 @@ from app.api.deps import get_current_admin
 from app.config import get_settings
 from app.database import get_db
 from app.models import AdminUser, SurveySession
-from app.services.responses import count_stats, export_responses_csv
+from app.services.responses import calculate_recommender_metrics, count_stats, export_responses_csv
 
 router = APIRouter(tags=['admin-stats'])
 
@@ -21,7 +21,11 @@ def stats(
     db: Session = Depends(get_db),
     _: AdminUser = Depends(get_current_admin),
 ):
-    return {'stats': count_stats(db)}
+    stats = count_stats(db)
+    # Add recommender metrics
+    metrics = calculate_recommender_metrics(db)
+    stats['recommender_metrics'] = metrics
+    return {'stats': stats}
 
 
 @router.get('/responses.csv')
@@ -29,9 +33,11 @@ def responses_csv(
     db: Session = Depends(get_db),
     _: AdminUser = Depends(get_current_admin),
 ):
+    """Свежий CSV всех ответов из БД (UTF-8 с BOM — иначе Excel
+    показывает русские символы как кракозябры)."""
     csv_text = export_responses_csv(db)
     return Response(
-        content=csv_text,
+        content=csv_text.encode('utf-8-sig'),
         media_type='text/csv; charset=utf-8',
         headers={
             'Content-Disposition': 'attachment; filename="responses.csv"',
@@ -114,3 +120,17 @@ def export_responses_to_disk(
         'rows': row_count,
         'encoding': 'utf-8-sig',
     }
+
+
+@router.get('/recommender-metrics')
+def recommender_metrics(
+    db: Session = Depends(get_db),
+    _: AdminUser = Depends(get_current_admin),
+):
+    """Метрики качества рекомендательной системы.
+
+    Сравнивает рекомендации системы с реальным выбором пользователей
+    (Feedback.chosen_fields) для завершённых сессий.
+    """
+    metrics = calculate_recommender_metrics(db)
+    return {'metrics': metrics}

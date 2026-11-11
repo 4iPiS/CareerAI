@@ -1,0 +1,16 @@
+
+=================================== ERRORS ====================================
+_________________ ERROR collecting tests/test_platform_api.py _________________
+tests\test_platform_api.py:6: in <module>
+    from app.main import app
+app\main.py:20: in <module>
+    from app.api.admin_train import router as admin_train_router
+app\api\admin_train.py:32: in <module>
+    class TrainRequest(BaseModel):
+app\api\admin_train.py:34: in TrainRequest
+    model_id: int | None = Field(None, description='ID модели для fine-tuning')
+E   TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'
+=========================== short test summary info ===========================
+ERROR tests/test_platform_api.py - TypeError: unsupported operand type(s) for...
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 1.40s

@@ -4,6 +4,7 @@
 и пороги ветвления загружаются из PostgreSQL. Состояние сессии хранится
 как JSON-словарь и переживает рестарты/несколько воркеров.
 """
+from __future__ import annotations
 
 from typing import Any, Optional
 
@@ -320,6 +321,8 @@ class SurveyEngine:
             'field_type': f.field_type.value,
             'options': f.options,
             'required': f.required,
+            'description': getattr(f, 'description', '') or '',
+            'examples': getattr(f, 'examples', None) or [],
         }
 
     # --- обработка ответов ---
@@ -445,7 +448,7 @@ class SurveyEngine:
     def build_profile(self, state: dict) -> dict:
         """Собирает полный профиль: ответы + значения по умолчанию.
         
-        Несданные предметы ЕГЭ (отмеченные -1) сохраняются как -1.
+        Несданные ЕГЭ-предметы не добавляются в профиль — подставляется default_value.
         """
         profile: dict[str, Any] = {}
         features = sorted(
@@ -456,10 +459,6 @@ class SurveyEngine:
             code = feat.code
             if code in state['answers']:
                 value = state['answers'][code]
-                # Если это ege_* и значение -1 — сохраняем как -1
-                if code.startswith('ege_') and value == -1:
-                    profile[code] = -1
-                    continue
             else:
                 value = feat.default_value
             profile[code] = self._coerce_feature(feat, value)
@@ -496,7 +495,7 @@ class SurveyEngine:
         return max(SALARY_MIN, min(SALARY_MAX, value))
 
     def _submit_ege(self, state: dict, answer: Any) -> Optional[dict]:
-        """Сохраняет баллы ЕГЭ: выбранные — по баллам, несданные — -1."""
+        """Сохраняет баллы ЕГЭ: выбранные — по баллам, несданные — не добавляются в answers."""
         selected = state.get('ege_selected', [])
         values = answer if isinstance(answer, dict) else {}
 
@@ -512,12 +511,8 @@ class SurveyEngine:
                 state['answers'][code] = score
                 if code not in state['directly_asked']:
                     state['directly_asked'].append(code)
-            else:
-                # Несданный предмет — помечаем -1
-                if code not in state['answers'] or state['answers'][code] != -1:
-                    state['answers'][code] = -1
-                    if code not in state['directly_asked']:
-                        state['directly_asked'].append(code)
+            # Несданные предметы не добавляются в answers — они просто отсутствуют в профиле
+
         state['questions_asked'] += 1
         state['last_answer'] = None
 

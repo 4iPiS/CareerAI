@@ -24,6 +24,8 @@ def _field_out(f: CustomFormField) -> dict:
         'required': f.required,
         'sort_order': f.sort_order,
         'is_active': f.is_active,
+        'description': f.description or '',
+        'examples': f.examples or [],
     }
 
 
@@ -56,6 +58,8 @@ def create_field(
         required=payload.required,
         sort_order=payload.sort_order,
         is_active=payload.is_active,
+        description=payload.description or '',
+        examples=payload.examples,
     )
     db.add(field)
     db.commit()
@@ -90,6 +94,8 @@ def update_field(
     field.required = payload.required
     field.sort_order = payload.sort_order
     field.is_active = payload.is_active
+    field.description = payload.description or ''
+    field.examples = payload.examples
     db.commit()
     db.refresh(field)
     return _field_out(field)

@@ -7,6 +7,7 @@
 from app.models.admin import AdminRole, AdminUser
 from app.models.base import Base
 from app.models.catalog import Direction, DirectionSkill, Feature, FeatureType
+from app.models.recommender_settings import RecommenderSettings
 from app.models.settings import UniversitySettings
 from app.models.survey import (
     CustomFieldType,
@@ -37,6 +38,7 @@ __all__ = [
     'QuestionGroup',
     'QuestionGroupCode',
     'QuestionType',
+    'RecommenderSettings',
     'SurveySession',
     'UniversitySettings',
 ]

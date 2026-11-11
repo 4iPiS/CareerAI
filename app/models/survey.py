@@ -2,7 +2,7 @@
 
 import enum
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy import (
     JSON,
@@ -63,7 +63,7 @@ class QuestionGroup(Base, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    questions: Mapped[list['Question']] = relationship(
+    questions: Mapped[List['Question']] = relationship(
         back_populates='group',
         order_by='Question.sort_order',
     )
@@ -129,6 +129,8 @@ class CustomFormField(Base, TimestampMixin):
     required: Mapped[bool] = mapped_column(Boolean, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    description: Mapped[str] = mapped_column(String(500), default='', nullable=False)
+    examples: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
 
 
 class SurveySession(Base, TimestampMixin):
@@ -141,7 +143,7 @@ class SurveySession(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(16), default='in_progress')
     answers: Mapped[dict] = mapped_column(JSON, default=dict)
     profile: Mapped[dict] = mapped_column(JSON, default=dict)
-    recommendations: Mapped[list] = mapped_column(JSON, default=list)
+    recommendations: Mapped[List] = mapped_column(JSON, default=list)
     custom_data: Mapped[dict] = mapped_column(JSON, default=dict)
     state: Mapped[Optional[dict]] = mapped_column(JSON, default=dict)
     questions_asked: Mapped[int] = mapped_column(Integer, default=0)
@@ -167,7 +169,7 @@ class Feedback(Base, TimestampMixin):
         unique=True,
         nullable=False,
     )
-    chosen_fields: Mapped[list] = mapped_column(JSON, default=list)
+    chosen_fields: Mapped[List] = mapped_column(JSON, default=list)
     feedback_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     label_source: Mapped[str] = mapped_column(String(32), default='self_report')
 

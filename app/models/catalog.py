@@ -1,6 +1,7 @@
 """Каталог: признаки, направления и их связь (ключевые навыки)."""
 
 import enum
+from typing import List
 
 from sqlalchemy import Boolean, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -36,7 +37,7 @@ class Feature(Base, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    directions: Mapped[list['Direction']] = relationship(
+    directions: Mapped[List['Direction']] = relationship(
         secondary='direction_skills',
         back_populates='features',
     )
@@ -63,7 +64,7 @@ class Direction(Base, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    features: Mapped[list['Feature']] = relationship(
+    features: Mapped[List['Feature']] = relationship(
         secondary='direction_skills',
         back_populates='directions',
     )

@@ -1,0 +1,5 @@
+FROM python:3.11-slim
+RUN pip install psycopg2-binary
+COPY fix_db.py /app/fix_db.py
+WORKDIR /app
+CMD ["python", "fix_db.py"]

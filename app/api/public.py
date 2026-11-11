@@ -59,7 +59,7 @@ def start(db: Session = Depends(get_db)):
     if payload.get('is_custom'):
         payload['consent_text'] = _consent_text(db)
 
-    return {'session_id': session_uuid, 'question': QuestionPayload(**payload)}
+    return {'session_id': session_uuid, 'question': QuestionPayload(**payload), 'progress': payload.get('progress')}
 
 
 @router.post('/answer', response_model=AnswerResponse)
@@ -95,6 +95,7 @@ def answer(req: AnswerRequest, db: Session = Depends(get_db)):
         done=False,
         session_id=req.session_id,
         question=QuestionPayload(**next_payload),
+        progress=next_payload.get('progress'),
     )
 
 
@@ -158,6 +159,7 @@ def survey_data(req: SurveyDataRequest, db: Session = Depends(get_db)):
             done=False,
             session_id=req.session_id,
             question=QuestionPayload(**next_payload),
+            progress=next_payload.get('progress'),
         )
 
     # Финальная анкета (позиция end) → завершаем и считаем рекомендации
@@ -214,7 +216,10 @@ def settings(db: Session = Depends(get_db)):
             'hero_image_path': s.hero_image_path,
             'presenter_video_path': s.presenter_video_path,
             'primary_color': s.primary_color,
+            'primary_alpha': s.primary_alpha,
             'consent_text': s.consent_text,
             'custom_form_position': s.custom_form_position,
+            'contact_email': s.contact_email,
+            'support_phone': s.support_phone,
         },
     }

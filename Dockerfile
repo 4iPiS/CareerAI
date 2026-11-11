@@ -1,3 +1,15 @@
+# ===== STAGE 1: Build React =====
+FROM node:20-alpine AS react-builder
+
+WORKDIR /app/frontend
+
+COPY frontend/package.json ./
+RUN npm install
+
+COPY frontend/ ./
+RUN npm run build
+
+# ===== STAGE 2: Python app =====
 FROM python:3.11-slim-bookworm
 
 WORKDIR /app
@@ -15,14 +27,15 @@ COPY scripts/ ./scripts/
 COPY config/ ./config/
 COPY migrations/ ./migrations/
 COPY alembic.ini ./
-COPY templates/ ./templates/
-COPY static/ ./static/
 COPY examples/ ./examples/
 COPY docker/entrypoint.sh ./docker/entrypoint.sh
 
+# Копируем собранный React
+COPY --from=react-builder /app/frontend/dist /app/static
+
 RUN sed -i 's/\r$//' /app/docker/entrypoint.sh \
     && chmod +x /app/docker/entrypoint.sh \
-    && mkdir -p /app/data /app/media /app/models /app/output /app/profiles
+    && mkdir -p /app/data /app/media /app/models /app/output /app/profiles /app/static
 
 ENV HOST=0.0.0.0
 ENV PORT=7777

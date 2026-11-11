@@ -3,6 +3,7 @@
 Тяжёлые зависимости (tensorflow, joblib, numpy) импортируются лениво —
 только когда есть обученная модель и нужен реальный расчёт.
 """
+from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -12,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Direction, ModelRun, ModelRunStatus
+from app.services.feature_normalization import normalize_profile_values
 
 MATCH_THRESHOLDS = [
     (85, 'IDEAL'),
@@ -72,6 +74,8 @@ class Recommender:
                 'description': 'Обучите модель в админ-панели.',
                 'explanation': 'Модель отсутствует: запустите обучение.',
                 'key_skills': '',
+                'probability': 0,
+                'match_level': 'LOW',
             }]
 
         import numpy as np
@@ -79,43 +83,70 @@ class Recommender:
         model, scaler, mlb, cfg = self._load(run)
         features = cfg.get('features', [])
 
-        # Передаём -1 в модель (модель обучена на -1 для несданных ЕГЭ)
-        row_values = []
-        for f in features:
-            val = profile.get(f)
-            if val is None:
-                val = -1.0 if f.startswith('ege_') else 0.0
-            row_values.append(float(val))
-        
-        row = np.array([row_values], dtype='float32')
-        x_scaled = scaler.transform(row)
-        # Получаем probability из нейронки — она уже учитывает все признаки
-        raw_probs = model.predict(x_scaled, verbose=0)[0]
-
-        # Получаем все направления и их навыки
+        # Получаем все активные направления и их навыки
         all_directions = self.db.scalars(
             select(Direction).where(Direction.is_active)
         ).all()
         dir_map = {d.name: d for d in all_directions}
         class_names = mlb.classes_
 
-        # Сортируем по probability нейронки
-        dir_list = [n for n in class_names if n in dir_map]
+        # === Нормализация: ЕГЭ 0-100 → 1-5, навыки 1-5 как есть ===
+        # Единая нормализация — та же, что использовалась при обучении.
+        row_values = normalize_profile_values(profile, features)
+
+        row = np.array([row_values], dtype='float32')
+        x_scaled = scaler.transform(row)
+        # Получаем probability из модели — она уже учитывает все признаки
+        raw_probs = np.asarray(model.predict(x_scaled, verbose=0)[0], dtype='float64')
+
+        # === Temperature scaling (калибровка, подобранная при обучении) ===
+        # Усиливаем/смягчаем контраст вероятностей той же функцией, что
+        # и на этапе калибровки: p^(1/T). Без нормализации на сумму —
+        # шкала 0-1 сохраняется, порядок не меняется.
+        temperature = float(cfg.get('temperature', 1.0) or 1.0)
+        cal_probs = raw_probs
+        if temperature > 0 and abs(temperature - 1.0) > 1e-6:
+            cal_probs = np.power(np.clip(raw_probs, 1e-9, 1.0), 1.0 / temperature)
+
+        # Сортируем по calibrated probability (для ранжирования)
         ranked = sorted(
-            [(n, float(raw_probs[i])) for i, n in enumerate(class_names) if n in dir_map],
+            [(n, float(cal_probs[i])) for i, n in enumerate(class_names) if n in dir_map],
             key=lambda x: x[1],
             reverse=True,
         )
 
-        # Вероятности из нейросети (0-1) → проценты (0-100)
-        normalized = [(name, prob * 100) for name, prob in ranked]
+        # === Отображаемый процент: якорная нормализация ===
+        # Абсолютные sigmoid-вероятности занижены (multi-label: даже идеальный
+        # профиль даёт топ-1 ~15-40%) и зависят от числа направлений.
+        # Топ-1 привязывается к шкале 55 + 40*anchor, где anchor — сырая
+        # вероятность лучшего направления (0.15 → ~61%, 0.5 → ~75%,
+        # 0.9 → ~91%). Остальные — пропорционально. Проценты интерпретируемы
+        # и стабильны от обучения к обучению.
+        top = ranked[:top_n]
+        anchor = top[0][1] if top else 0.0
 
         recommendations = []
-        for rank, (name, prob) in enumerate(normalized[:top_n], start=1):
+        for rank, (name, cal_prob) in enumerate(top, start=1):
             direction = dir_map.get(name)
             key_skills = []
             if direction and direction.features:
                 key_skills = [f.code for f in direction.features]
+
+            if anchor > 0:
+                prob_pct = round(cal_prob / anchor * (55.0 + 40.0 * anchor))
+            else:
+                prob_pct = 1
+            prob_pct = max(1, min(100, prob_pct))
+
+            # Вердикт на основе отображаемого процента
+            if prob_pct >= 55:
+                verdict = 'ПОДХОДИТ'
+            elif prob_pct >= 30:
+                verdict = 'ЧАСТИЧНО ПОДХОДИТ'
+            else:
+                verdict = 'НЕ ПОДХОДИТ'
+
+            exp = self._build_explanation(name, verdict, profile, key_skills)
 
             recommendations.append({
                 'rank': rank,
@@ -123,10 +154,15 @@ class Recommender:
                 'code': direction.fgos_code if direction else '',
                 'image': direction.image_path if direction else '',
                 'description': direction.description if direction else '',
-                'explanation': self._generate_explanation(
-                    name, prob, profile, key_skills,
-                    direction.description if direction else '',
-                ),
+                'probability': prob_pct,
+                'raw_probability': round(cal_prob, 4),
+                'match_level': get_match_level(prob_pct),
+                'verdict': verdict,
+                'strengths': exp['strengths'],
+                'weaknesses': exp['weaknesses'],
+                'advice': exp['advice'],
+                'summary': exp['summary'],
+                'explanation': exp['text'],
                 'key_skills': direction.key_skills_text if direction else '',
             })
         return recommendations
@@ -191,115 +227,121 @@ class Recommender:
         return Recommender.SKILL_DESCRIPTIONS.get(skill_code, skill_code)
 
     @staticmethod
-    def _generate_explanation(
+    def _build_explanation(
         direction_name: str,
-        probability: float,
+        verdict: str,
         profile: dict,
         key_skills: list[str],
-        direction_description: str = '',
-    ) -> str:
-        """Генерирует персонализированное объяснение рекомендации."""
-        parts = []
+    ) -> dict:
+        """Строит структурированное объяснение рекомендации.
 
-        # === 2. Почему это направление подходит (сильные стороны + обоснование) ===
-        strengths_excellent = []  # >= 4.5
-        strengths_good = []       # >= 3.5
-        strengths_medium = []     # >= 2.5
-
+        Возвращает dict с полями:
+          - verdict: 'ПОДХОДИТ' / 'ЧАСТИЧНО ПОДХОДИТ' / 'НЕ ПОДХОДИТ'
+          - strengths: список сильных сторон (готовые фразы)
+          - weaknesses: список пробелов
+          - advice: конкретный совет
+          - summary: итоговое предложение
+          - text: все блоки, склеенные ' | ' (обратная совместимость)
+        """
+        # === Ключевые навыки направления с оценками пользователя ===
+        items: list[tuple[str, str, float]] = []
         for skill in key_skills:
-            value = float(profile.get(skill, 0) or 0)
-            label = Recommender._skill_label(skill)
-            if value >= 4.5:
-                strengths_excellent.append((label, value))
-            elif value >= 3.5:
-                strengths_good.append((label, value))
-            elif value >= 2.5:
-                strengths_medium.append((label, value))
+            val = profile.get(skill)
+            if val is None:
+                continue
+            try:
+                v = float(val)
+            except (TypeError, ValueError):
+                continue
+            if skill.startswith('ege_'):
+                # В профиле ЕГЭ хранится в баллах 0-100 → шкала 1-5
+                v = (v / 100.0) * 4.0 + 1.0
+            items.append((skill, Recommender._skill_label(skill), min(v, 5.0)))
 
-        # Общие черты
-        for trait, phrase in Recommender.TRAIT_DESCRIPTIONS.items():
-            value = float(profile.get(trait, 0) or 0)
-            if value >= 4.5:
-                strengths_excellent.append((phrase, value))
-            elif value >= 3.5:
-                strengths_good.append((phrase, value))
-            elif value >= 2.5:
-                strengths_medium.append((phrase, value))
+        items.sort(key=lambda x: x[2], reverse=True)
 
-        # Формируем секцию "Почему подходит"
-        if strengths_excellent or strengths_good:
-            reason_parts = []
-            
-            if strengths_excellent:
-                skill_list = ', '.join([f'«{s[0]}» ({int(s[1])}/5)' for s in strengths_excellent[:3]])
-                reason_parts.append(f'Вы отлично владеете: {skill_list}')
-            
-            if strengths_good:
-                skill_list = ', '.join([f'«{s[0]}» ({int(s[1])}/5)' for s in strengths_good[:2]])
-                reason_parts.append(f'Хорошо развиты: {skill_list}')
-            
-            # Обоснование связи с направлением
-            matched_excellent = len([s for s in key_skills 
-                                    if float(profile.get(s, 0) or 0) >= 4.0])
-            if matched_excellent >= 2 and key_skills:
-                reason_parts.append(
-                    f'Ваши сильные навыки соответствуют ключевым требованиям этого направления'
-                )
-            
-            parts.append('Почему подходит: ' + '. '.join(reason_parts))
+        strong_skills = [(s, l, v) for s, l, v in items if v >= 4.0]
+        medium_skills = [(s, l, v) for s, l, v in items if 3.0 <= v < 4.0]
+        weak_skills = [(s, l, v) for s, l, v in items if v < 3.0]
 
-        # === 3. Слабые стороны (что нужно развить) ===
-        weak_skills = []
-        for skill in key_skills:
-            value = float(profile.get(skill, 0) or 0)
-            if 0 < value < 3:  # Пропускаем 0 (неизвестно) и -1 (ЕГЭ не сдавал)
-                weak_skills.append((Recommender._skill_label(skill), value))
+        def _fmt(item: tuple[str, str, float]) -> str:
+            return f'«{item[1]}» ({int(round(item[2]))}/5)'
 
-        if weak_skills and probability < 85:
-            weak_list = ', '.join([f'«{w[0]}» ({int(w[1])}/5)' for w in weak_skills[:3]])
-            parts.append(f'Нужно развить: {weak_list}')
+        strengths: list[str] = []
+        weaknesses: list[str] = []
 
-        # === 4. Рекомендации по развитию ===
-        if probability >= 70 and weak_skills:
-            top_weak = weak_skills[0]
-            parts.append(
-                f'Совет: перед поступлением обратите внимание на {top_weak[0]} — '
-                f'это поможет успешно учиться на первых курсах'
+        if strong_skills:
+            names = ', '.join(_fmt(s) for s in strong_skills[:3])
+            strengths.append(f'Хорошо развиты: {names}')
+        if medium_skills:
+            names = ', '.join(_fmt(m) for m in medium_skills[:2])
+            strengths.append(f'Базовый уровень: {names}')
+
+        # Общие качества как сильная сторона
+        strong_traits = [
+            phrase
+            for trait, phrase in Recommender.TRAIT_DESCRIPTIONS.items()
+            if float(profile.get(trait, 0) or 0) >= 4.0
+        ]
+        if strong_traits:
+            strengths.append(f'Сильные качества: {", ".join(strong_traits[:2])}')
+
+        if weak_skills:
+            names = ', '.join(_fmt(w) for w in weak_skills[:3])
+            weaknesses.append(f'Требуют внимания: {names}')
+
+        # === Совет ===
+        if verdict == 'ПОДХОДИТ':
+            if weak_skills:
+                advice = f'Совет: подтяните {_fmt(weak_skills[0])} — это усилит профиль.'
+            else:
+                advice = 'Совет: продолжайте развиваться в этом направлении — у вас уверенная база.'
+        elif verdict == 'ЧАСТИЧНО ПОДХОДИТ':
+            if weak_skills:
+                advice = f'Совет: начните с {_fmt(weak_skills[0])} — это заметно повысит соответствие.'
+            else:
+                advice = 'Совет: углубите ключевые навыки направления до уверенного уровня.'
+        else:
+            if strong_skills:
+                advice = 'Совет: сильные стороны есть, но они относятся к другим направлениям — рассмотрите варианты выше.'
+            else:
+                advice = 'Совет: начните с основ — вводных курсов по ключевым навыкам направления.'
+
+        # === Итог ===
+        if verdict == 'ПОДХОДИТ':
+            summary = (
+                f'«{direction_name}» — лучший вариант из подобранных: '
+                f'ваш профиль совпадает с ключевыми навыками направления.'
             )
-        elif probability < 40 and key_skills:
-            # Для низких совпадений — более конкретные рекомендации
-            key_skill = key_skills[0]
-            parts.append(
-                f'Для этого направления рекомендуется начать с изучения '
-                f'{Recommender._skill_label(key_skill)} — это базовый навык, '
-                f'который понадобится с первого курса'
-            )
-
-        # === 5. Итоговая рекомендация ===
-        if probability >= 85:
-            parts.append(
-                f'Направление «{direction_name}» — оптимальный выбор. '
-                f'С вашими сильными сторонами вы сможете успешно освоить программу'
-            )
-        elif probability >= 70:
-            parts.append(
-                f'«{direction_name}» — хороший вариант. '
-                f'Рекомендуем обратить внимание на это направление'
-            )
-        elif probability >= 55:
-            parts.append(
-                f'«{direction_name}» — вариант для рассмотрения. '
-                f'Часть необходимых навыков у вас есть, но потребуется подготовка'
-            )
-        elif probability >= 40:
-            parts.append(
-                f'«{direction_name}» — направление требует дополнительной подготовки. '
-                f'Если интересно, начните изучать базовые навыки заранее'
+        elif verdict == 'ЧАСТИЧНО ПОДХОДИТ':
+            summary = (
+                f'«{direction_name}» — вариант для рассмотрения: '
+                f'часть навыков уже развита, остальное достижимо при подготовке.'
             )
         else:
-            parts.append(
-                f'«{direction_name}» — пока низкое совпадение. '
-                f'Попробуйте другие направления или сначала получите базовую подготовку'
+            summary = (
+                f'«{direction_name}» пока слабо совпадает с вашим профилем — '
+                f'обратите внимание на направления выше.'
             )
 
-        return ' | '.join(parts)
+        verdict_reason = {
+            'ПОДХОДИТ': 'да',
+            'ЧАСТИЧНО ПОДХОДИТ': 'отчасти',
+            'НЕ ПОДХОДИТ': 'нет',
+        }.get(verdict, 'нет')
+        parts = [
+            f'Вердикт: направление «{direction_name}» {verdict_reason} подходит.',
+        ]
+        parts.extend(strengths)
+        parts.extend(weaknesses)
+        parts.append(advice)
+        parts.append(summary)
+
+        return {
+            'verdict': verdict,
+            'strengths': strengths,
+            'weaknesses': weaknesses,
+            'advice': advice,
+            'summary': summary,
+            'text': ' | '.join(parts),
+        }

@@ -1,16 +1,17 @@
 """Безопасность: хеширование паролей, JWT-токены, rate-limiting."""
+from __future__ import annotations
 
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 import bcrypt
 import jwt
 
 from app.config import get_settings
 
-_RATE_LIMIT_HITS: dict[str, list[float]] = {}
+_RATE_LIMIT_HITS: Dict[str, List[float]] = {}
 _RATE_LIMIT_LOCK = threading.Lock()
 
 
@@ -41,7 +42,7 @@ def create_access_token(
     subject: str,
     role: str,
     expires_minutes: Optional[int] = None,
-    extra: Optional[dict[str, Any]] = None,
+    extra: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Создание JWT (HS256)."""
     settings = get_settings()

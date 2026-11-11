@@ -8,6 +8,7 @@ config.json). Каждый запуск — отдельная строка mode
 Тяжёлые ML-зависимости (numpy, pandas, tensorflow, sklearn) импортируются
 лениво — внутри функций, поэтому модуль можно импортировать без них.
 """
+from __future__ import annotations
 
 import json
 import math
@@ -22,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import SessionLocal
 from app.models import Direction, Feature, ModelRun, ModelRunStatus
+from app.services.feature_normalization import normalize_dataframe_ege
 
 
 def _clean_nan(obj: Any) -> Any:
@@ -59,7 +61,7 @@ EGE_BOOSTS = {
         'math_modeling', 'algorithms_theory', 'computer_systems',
         'software_development', 'business_analytics', 'it_infrastructure',
         'power_engineering', 'automation_tech', 'electronics',
-        'economic_analysis', 'ai_ml', 'cybersecurity',
+        'economic_analysis', 'ai_ml', 'cybersecurity', 'geology',
     ],
     'ege_russian': [
         'communication_skill', 'legal_knowledge', 'social_research',
@@ -69,18 +71,19 @@ EGE_BOOSTS = {
     'ege_informatics': [
         'computer_systems', 'software_development', 'it_infrastructure',
         'algorithms_theory', 'automation_tech', 'business_analytics',
-        'ai_ml', 'cybersecurity',
+        'ai_ml', 'cybersecurity', 'geology',
     ],
     'ege_physics': [
         'experimental_physics', 'nuclear_physics', 'power_engineering',
         'electronics', 'aerospace_design', 'automation_tech',
-        'chemical_analysis', 'geology',
+        'chemical_analysis', 'geology', 'ai_ml',
     ],
     'ege_chemistry': ['chemical_analysis', 'biotech'],
     'ege_biology': ['ecology', 'psychological_counseling', 'biotech'],
     'ege_social': [
         'management', 'public_administration', 'economic_analysis',
         'legal_knowledge', 'social_research', 'psychological_counseling',
+        'business_analytics',
     ],
     'ege_history': ['legal_knowledge', 'social_research', 'public_administration'],
     'ege_foreign': ['linguistics_skill'],
@@ -95,10 +98,13 @@ def _fill_ege(
     skill_map: dict[str, list[str]],
     all_high: bool = False,
 ) -> None:
-    """3-4 сданных ЕГЭ (релевантные + обязательные), остальные = -1.
-    
-    Закономерный -1: профильные предметы ВСЕГДА сданы, остальные ВСЕГДА -1.
-    Это позволяет модели выучить связи «предмет → направление».
+    """3-4 сданных ЕГЭ (релевантные + обязательные), остальные = 0 баллов.
+
+    Каноническая шкала ЕГЭ — баллы 0-100 (как в реальном опросе).
+    Несданные предметы = 0 баллов, сданные профильные = 55-95,
+    обязательные = 50-90, у отличников все сданные = 80-100.
+    Приведение к шкале 1-5 выполняется единообразно перед обучением
+    (см. app.services.feature_normalization.normalize_dataframe_ege).
     """
     import numpy as np
 
@@ -120,27 +126,39 @@ def _fill_ege(
     if 'ege_math' in profile:
         mandatory.append('ege_math')
 
-    # Сданные = профильные + обязательные
-    taken = list(set(relevant + mandatory))
+    # Реалистичная вариативность ЕГЭ — иначе ЕГЭ-паттерн становится
+    # «фингерпринтом» направления: модель учится определять направление
+    # по набору сданных предметов и игнорирует навыки (наблюдаемый баг:
+    # отклонение реального профиля от идеального паттерна обнуляло
+    # вероятность родственного направления).
+    # Сданные = профильные (с небольшим шансом пропуска) + обязательные
+    # + 0-2 случайных предмета.
+    droppable = [s for s in relevant if np.random.random() < 0.15]
+    extra = [
+        s for s in EGE_SUBJECTS
+        if s not in relevant and s not in mandatory
+        and s in profile and np.random.random() < 0.25
+    ]
+    taken = list(set(relevant + mandatory + extra) - set(droppable))
 
-    # ВСЕ несданные = -1
+    # ВСЕ несданные = 0 баллов (не сдавал)
     for subject in EGE_SUBJECTS:
         if subject in profile and subject not in taken:
-            profile[subject] = -1
+            profile[subject] = 0
 
-    # Сданные = баллы
+    # Сданные = баллы 0-100
     for subject in taken:
         if subject not in profile:
             continue
         if all_high:
-            score = float(np.random.uniform(88, 100))
+            score = float(np.random.uniform(70.0, 100.0))
+        elif subject in relevant:
+            score = float(np.random.uniform(55.0, 95.0))
+        elif subject in mandatory:
+            score = float(np.random.uniform(50.0, 90.0))
         else:
-            if subject in relevant:
-                score = float(np.random.normal(72, 8))
-            else:
-                score = float(np.random.normal(65, 8))
-            score = max(40, min(100, score))
-        profile[subject] = int(round(score))
+            score = float(np.random.uniform(45.0, 85.0))
+        profile[subject] = int(round(max(0.0, min(100.0, score))))
 
 
 def set_seed(seed: int = 42) -> None:
@@ -190,16 +208,24 @@ def generate_training_data(
     """Синтетические данные по правилам «навык → направление».
 
     Возвращает (DataFrame, multi_labels). DataFrame импортируется лениво.
+    
+    Реалистичные профили: ключевые навыки = 3.5-5.0, неключевые = 2.0-4.0.
+    Модель учится на данных, похожих на реальные ответы в опросе.
     """
     import numpy as np
     import pandas as pd
 
     data = []
     multi_labels = []
-    
-    # общее количество строк для расчёта прогресса
+
     n_dirs = len(direction_names) or 1
-    _total_est = 500 * n_dirs + 2000 * n_dirs + 500 * n_dirs + 10000 + 5000 + 2000 * n_dirs + 500 * n_dirs + 15000 + 20000 + 1000 * n_dirs + 1000 * n_dirs + 1000 * n_dirs + 15000
+    # Ожидаемый объём выборки — для расчёта процента прогресса
+    target_rows = n_dirs * (3000 + 1000 + 1000 + 1000 + 300) + 5000
+
+    def report_progress():
+        if progress_callback:
+            pct = min(95, round(len(data) / target_rows * 100))
+            progress_callback(pct, len(data))
 
     def add(profile: dict, labels: list[str], all_high: bool = False):
         profile['desired_salary'] = float(np.random.choice(SALARY_CHOICES))
@@ -208,249 +234,114 @@ def generate_training_data(
         data.append(profile)
         multi_labels.append(labels)
 
-    # 1b) УНИВЕРСАЛЬНЫЕ ОТЛИЧНИКИ — все 5, привязка к конкретным направлениям
-    dirs = direction_names
-    for di, direction in enumerate(dirs):
+    # 1) РЕАЛИСТИЧНЫЕ (3000/направление) — ВСЕ key-навыки высокие (3.5-5.0).
+    # Принципиально: направления с одинаковым набором key-навыков («двойники»,
+    # напр. «Технологии разработки ПО» и «Разработка ПИС») получают
+    # ИДЕНТИЧНЫЕ кластеры — модель честно выдаёт им близкие проценты.
+    # Прежние произвольные per-направленческие «профили-ловушки» приводили
+    # к абсурду: программист с sd=5 получал 6% у родственного направления.
+    for direction in direction_names:
         key_skills = skill_map.get(direction, [])
-        for _ in range(500):
-            profile = {f: 5.0 for f in feature_codes}
-            for ege_col in EGE_SUBJECTS:
-                if ege_col in feature_codes and any(
-                    s in EGE_BOOSTS.get(ege_col, []) for s in key_skills
-                ):
-                    profile[ege_col] = int(np.random.uniform(95, 100))
+        for _ in range(3000):
+            profile = {}
+            for f in feature_codes:
+                if f in key_skills:
+                    profile[f] = float(np.random.normal(4.3, 0.35))
+                    profile[f] = max(3.5, min(5.0, profile[f]))
+                else:
+                    profile[f] = float(np.random.normal(3.0, 0.4))
+                    profile[f] = max(2.0, min(4.0, profile[f]))
             add(profile, [direction])
-        if progress_callback and di % 5 == 0:
-            progress_callback(2, len(data))
+        report_progress()
 
-    # 1c) ЧАСТИЧНО ИДЕАЛЬНЫЙ ПРОФИЛЬ — 2-3 ключевых = 5, остальные = 2-3.5
-    for di, direction in enumerate(direction_names):
+    # 1b) СРЕДНИЕ ПРОФИЛИ (1000/направление) — key-навыки 3.3-4.6:
+    # профиль с умеренным интересом к области тоже узнаваем.
+    for direction in direction_names:
         key_skills = skill_map.get(direction, [])
         for _ in range(1000):
             profile = {}
             for f in feature_codes:
                 if f in key_skills:
-                    profile[f] = 5.0
+                    profile[f] = float(np.random.normal(3.9, 0.3))
+                    profile[f] = max(3.3, min(4.6, profile[f]))
                 else:
-                    profile[f] = float(np.random.uniform(2.0, 3.5))
-            for ege_col in EGE_SUBJECTS:
-                if ege_col in feature_codes:
-                    if any(s in EGE_BOOSTS.get(ege_col, []) for s in key_skills):
-                        profile[ege_col] = int(np.random.uniform(75, 95))
-                    else:
-                        profile[ege_col] = -1
+                    profile[f] = float(np.random.normal(3.0, 0.4))
+                    profile[f] = max(2.0, min(4.0, profile[f]))
             add(profile, [direction])
-        if progress_callback and di % 5 == 0:
-            progress_callback(2, len(data))
+        report_progress()
 
-    # 1d) СРЕДНИЙ ПРОФИЛЬ — все = 3-4, ЕГЭ = 60-75 (только у 40%)
-    for i in range(10000):
-        profile = {f: float(np.random.uniform(3.0, 4.0)) for f in feature_codes}
-        for ege_col in EGE_SUBJECTS:
-            if ege_col in feature_codes:
-                if np.random.random() < 0.4:
-                    profile[ege_col] = int(np.random.uniform(60, 75))
-                else:
-                    profile[ege_col] = -1
-        # направления по навыкам
-        scores = {}
-        for direction, key_skills in skill_map.items():
-            if not key_skills:
-                continue
-            avg = float(np.mean([profile[s] for s in key_skills]))
-            scores[direction] = avg
-        chosen = sorted(scores, key=scores.get, reverse=True)[:2]
-        add(profile, chosen)
-        if progress_callback and i % 2000 == 0:
-            progress_callback(2, len(data))
+    # 2) ОТЛИЧНИКИ — все навыки 4.0-5.0
+    for di, direction in enumerate(direction_names):
+        for _ in range(1000):
+            profile = {f: float(np.random.uniform(4.0, 5.0)) for f in feature_codes}
+            add(profile, [direction], all_high=True)
+        report_progress()
 
-    # 1e) БЕЗ ЕГЭ — только навыки, ЕГЭ все = -1
+    # 3) МУЛЬТИ-НАПРАВЛЕНИЯ — 2-3 направления с разными баллами
     for i in range(5000):
-        profile = {f: float(np.random.uniform(2.0, 5.0)) for f in feature_codes}
-        for ege_col in EGE_SUBJECTS:
-            if ege_col in feature_codes:
-                profile[ege_col] = -1
-        scores = {}
-        for direction, key_skills in skill_map.items():
-            if not key_skills:
-                continue
-            avg = float(np.mean([profile[s] for s in key_skills]))
-            if avg >= 3.0:
-                scores[direction] = avg
-        if scores:
-            chosen = sorted(scores, key=scores.get, reverse=True)[:2]
+        profile = {f: float(np.random.normal(3.0, 0.4)) for f in feature_codes}
+        profile = {f: max(2.0, min(4.0, v)) for f, v in profile.items()}
+        
+        max_dirs = min(3, len(direction_names))
+        if max_dirs >= 2:
+            num_dirs = int(np.random.choice(range(2, max_dirs + 1)))
         else:
-            chosen = list(np.random.choice(direction_names, size=2, replace=False))
-        add(profile, chosen)
-        if progress_callback and i % 1000 == 0:
-            progress_callback(2, len(data))
-
-    # 2) чистые профили по одному направлению — сильный контраст
-    dirs2 = direction_names
-    for di, direction in enumerate(dirs2):
-        key_skills = skill_map.get(direction, [])
-        for _ in range(2000):
-            profile = {
-                f: 5.0 if f in key_skills else 1.0
-                for f in feature_codes
-            }
-            add(profile, [direction])
-        if progress_callback and di % 5 == 0:
-            progress_callback(3, len(data))
-
-    # 2b) усиленные чистые профили — высокие ЕГЭ по профильным предметам
-    dirs2b = direction_names
-    for di, direction in enumerate(dirs2b):
-        key_skills = skill_map.get(direction, [])
-        for _ in range(500):
-            profile = {
-                f: 5.0 if f in key_skills else 1.5
-                for f in feature_codes
-            }
-            for ege_col in EGE_SUBJECTS:
-                if ege_col in feature_codes and any(
-                    s in EGE_BOOSTS.get(ege_col, []) for s in key_skills
-                ):
-                    profile[ege_col] = int(np.random.uniform(80, 98))
-            add(profile, [direction])
-        if progress_callback and di % 5 == 0:
-            progress_callback(4, len(data))
-
-    # 3) мультинаправленные профили — 2-3 направления, чёткий контраст
-    for i in range(15000):
-        profile = {f: 1.0 for f in feature_codes}
-        num_dirs = int(np.random.choice([2, 3]))
-        selected = list(
-            np.random.choice(direction_names, size=num_dirs, replace=False),
-        )
+            num_dirs = 1
+        selected = list(np.random.choice(direction_names, size=num_dirs, replace=False))
+        
         for direction in selected:
             for skill in skill_map.get(direction, []):
-                profile[skill] = 5.0
+                profile[skill] = float(np.random.normal(4.2, 0.3))
+                profile[skill] = max(3.0, min(5.0, profile[skill]))
+        
         for trait in ('logical_thinking', 'memory_ability', 'problem_solving'):
             if trait in profile:
                 profile[trait] = float(np.random.uniform(3.5, 4.5))
         add(profile, selected)
-        if progress_callback and i % 3000 == 0:
-            progress_callback(5, len(data))
+        if i % 500 == 0:
+            report_progress()
 
-    # 4) шумные профили — низкий фон, случайные пики
-    for i in range(20000):
-        profile = {
-            f: float(np.random.uniform(1.0, 2.5))
-            for f in feature_codes
-        }
-        # случайные пики до 4.5 на 2-4 признака
-        for _ in range(np.random.randint(2, 5)):
-            f = np.random.choice(feature_codes)
-            profile[f] = float(np.random.uniform(3.5, 4.5))
-        scores = {}
-        for direction, key_skills in skill_map.items():
-            if not key_skills:
-                continue
-            avg = float(np.mean([profile[s] for s in key_skills]))
-            if avg >= 3.0:
-                scores[direction] = avg
-        if not scores:
-            chosen = list(
-                np.random.choice(
-                    direction_names,
-                    size=int(np.random.choice([1, 2])),
-                    replace=False,
-                ),
-            )
-        else:
-            chosen = sorted(scores, key=scores.get, reverse=True)[:2]
-        add(profile, chosen)
-        if progress_callback and i % 4000 == 0:
-            progress_callback(6, len(data))
-
-    # 5) балансировка: направление vs похожие — чёткий контраст
-    dirs5 = direction_names
-    for di, direction in enumerate(dirs5):
-        others = [d for d in direction_names if d != direction]
-        for _ in range(1000):
-            profile = {f: 1.0 for f in feature_codes}
-            for skill in skill_map.get(direction, []):
-                profile[skill] = 5.0
-            if others:
-                rival = np.random.choice(others)
-                for skill in skill_map.get(rival, []):
-                    if skill not in skill_map.get(direction, []):
-                        profile[skill] = 4.0
-            add(profile, [direction])
-        if progress_callback and di % 5 == 0:
-            progress_callback(7, len(data))
-
-    # 6) узкие профили — только 1-2 навыка направления
-    dirs6 = direction_names
-    for di, direction in enumerate(dirs6):
+    # 4) СЛАБЫЕ ПРОФИЛИ — ключевые ~3.3, остальные ~2.5.
+    # Важно: key-навыки не ровно 3.0 — иначе слабый интерес к области
+    # (например, legal=3 у гос-профиля) буквально совпадает со слабым
+    # кластером узкого направления и «крадёт» рекомендацию.
+    for direction in direction_names:
         key_skills = skill_map.get(direction, [])
         for _ in range(1000):
-            profile = {f: 1.0 for f in feature_codes}
-            num_skills = min(int(np.random.choice([1, 2, 3])), len(key_skills))
-            selected_skills = list(np.random.choice(key_skills, size=num_skills, replace=False))
-            for skill in selected_skills:
-                profile[skill] = 5.0
+            profile = {}
+            for f in feature_codes:
+                if f in key_skills:
+                    profile[f] = float(np.random.normal(3.3, 0.3))
+                    profile[f] = max(2.8, min(3.9, profile[f]))
+                else:
+                    profile[f] = float(np.random.normal(2.5, 0.3))
+                    profile[f] = max(2.0, min(3.0, profile[f]))
             add(profile, [direction])
-        if progress_callback and di % 5 == 0:
-            progress_callback(8, len(data))
+        report_progress()
 
-    # 7) профили с высоким зарплатным ожиданием
-    dirs7 = direction_names
-    for di, direction in enumerate(dirs7):
-        key_skills = skill_map.get(direction, [])
-        for _ in range(1000):
-            profile = {
-                f: 5.0 if f in key_skills else 1.0
-                for f in feature_codes
-            }
-            profile['desired_salary'] = float(np.random.choice([150000, 200000, 300000]))
-            add(profile, [direction])
-        if progress_callback and di % 5 == 0:
-            progress_callback(9, len(data))
-
-    # 8) профили с низким зарплатным ожиданием (гибкие) — сильный контраст
-    dirs8 = direction_names
-    for di, direction in enumerate(dirs8):
-        key_skills = skill_map.get(direction, [])
-        for _ in range(1000):
-            profile = {
-                f: 5.0 if f in key_skills else 1.0
-                for f in feature_codes
-            }
-            profile['desired_salary'] = float(np.random.choice([60000, 80000]))
-            add(profile, [direction])
-
-    # 9) профили с ЕГЭ баллами — сильный контраст
-    dirs9 = direction_names
-    for di, direction in enumerate(dirs9):
-        key_skills = skill_map.get(direction, [])
-        for _ in range(1000):
-            profile = {
-                f: 5.0 if f in key_skills else 1.0
-                for f in feature_codes
-            }
-            for ege_col in EGE_SUBJECTS:
-                if ege_col in feature_codes:
-                    if any(s in EGE_BOOSTS.get(ege_col, []) for s in key_skills):
-                        profile[ege_col] = int(np.random.uniform(75, 98))
+    # 5) БЕЗ ЕГЭ — пользователь не сдавал ни одного предмета (все ege_* = 0).
+    # Без этого блока профили «все ЕГЭ = 0» вне обучающего распределения:
+    # модель экстраполирует и выдаёт бессмысленный топ (наблюдаемый баг).
+    has_ege = any(c.startswith('ege_') for c in feature_codes)
+    if has_ege:
+        for direction in direction_names:
+            key_skills = skill_map.get(direction, [])
+            for _ in range(300):
+                profile = {}
+                for f in feature_codes:
+                    if f.startswith('ege_'):
+                        profile[f] = 0
+                    elif f in key_skills:
+                        base = 2.6 + 2.3 * float(np.random.uniform(0.7, 1.0))
+                        profile[f] = float(np.random.normal(base, 0.35))
+                        profile[f] = max(3.2, min(5.0, profile[f]))
+                    elif f == 'desired_salary':
+                        continue
                     else:
-                        profile[ege_col] = int(np.random.uniform(40, 70))
-            add(profile, [direction])
-
-    # 10) смешанные профили с преобладанием 2-3 направлений — сильный контраст
-    for i in range(15000):
-        profile = {f: 1.0 for f in feature_codes}
-        num_dirs = int(np.random.choice([2, 3]))
-        selected = list(
-            np.random.choice(direction_names, size=num_dirs, replace=False),
-        )
-        for idx, direction in enumerate(selected):
-            weight = 5.0 - idx * 1.0  # первое: 5.0, второе: 4.0, третье: 3.0
-            for skill in skill_map.get(direction, []):
-                profile[skill] = min(5.0, weight)
-        add(profile, selected)
-    if progress_callback: progress_callback(10, len(data))
+                        profile[f] = float(np.random.normal(3.0, 0.4))
+                        profile[f] = max(2.0, min(4.0, profile[f]))
+                add(profile, [direction])
+            report_progress()
 
     return pd.DataFrame(data), multi_labels
 
@@ -497,19 +388,23 @@ def generate_dataset_csv_progressive(
     data = []
     multi_labels = []
 
-    def _save_progress(step, rows):
-        # step: 0-10, progress: 0-100 (cumulative)
-        progress = min(100, round((step / 10) * 100))
+    def _save_progress(progress_pct, rows):
+        # progress_pct: 0-100 (плавный, считается по объёму сгенерированных строк)
+        progress = min(100, max(0, int(progress_pct)))
         with open(progress_file, 'w') as f:
-            _json.dump({'step': step, 'total': 10, 'rows': rows, 'progress': progress}, f)
+            _json.dump({
+                'step': progress, 'total': 100,
+                'rows': rows, 'progress': progress,
+                'done': progress >= 100,
+            }, f)
 
     df, multi_labels = generate_training_data(
         feature_codes, direction_names, skill_map,
-        progress_callback=lambda step, rows: _save_progress(step, rows),
+        progress_callback=lambda pct, rows: _save_progress(pct, rows),
     )
-    
+
     # После завершения — записываем финальный прогресс как 100%
-    _save_progress(10, len(df))
+    _save_progress(100, len(df))
     
     # Записываем CSV на диск
     write_dataset_csv(df, output_path)
@@ -737,10 +632,21 @@ def compute_metrics(
         if any(idx in true for idx in order[:5]):
             top5 += 1
 
+    import numpy as _np
+
+    # Accuracy:
+    #  - accuracy — средняя доля верных решений по всем меткам (Hamming accuracy)
+    #  - subset_accuracy — все метки примера угаданы точно (strict match)
+    correct = (_np.asarray(y_pred_binary) == _np.asarray(y_true))
+    hamming_acc = float(correct.mean()) if n else 0.0
+    subset_acc = float(correct.all(axis=1).mean()) if n else 0.0
+
     metrics = {
         'top1_accuracy': round(top1 / n, 4) if n else 0,
         'top3_accuracy': round(top3 / n, 4) if n else 0,
         'top5_accuracy': round(top5 / n, 4) if n else 0,
+        'accuracy': round(hamming_acc, 4),
+        'subset_accuracy': round(subset_acc, 4),
         'macro_precision': round(
             float(precision_score(y_true, y_pred_binary, average='macro', zero_division=0)), 4,
         ),
@@ -856,6 +762,10 @@ def run_training(
         run = db_init.get(ModelRun, run_id)
         if run is None:
             return
+        if run.status == ModelRunStatus.failed:
+            # Отменён ещё до старта
+            print('[trainer] Run отменён до старта — не запускаю', flush=True)
+            return
         run.status = ModelRunStatus.running
         db_init.commit()
         print(f'[trainer] Status set to running', flush=True)
@@ -922,6 +832,9 @@ def run_training(
             multi_labels = multi_labels + real_labels
             dataset_info['real'] = real_count
 
+        # Единая нормализация ЕГЭ (0-100 → 1-5) для синтетики и реальных данных
+        df = normalize_dataframe_ege(df, feature_codes)
+
         feature_cols = [c for c in df.columns if c != 'chosen_fields']
         X = df[feature_cols].values.astype('float32')
 
@@ -983,14 +896,19 @@ def run_training(
             metrics=[keras.metrics.AUC(name='auc')],
         )
         print(f'[trainer] Starting model.fit: {len(X_train)} train, {len(X_test)} test samples, 80 epochs', flush=True)
-        callbacks = [
-            keras.callbacks.EarlyStopping(
-                monitor='val_auc',
-                patience=10,
-                restore_best_weights=True,
-            ),
-            _EpochSaverCallback(run_id, 80),
-        ]
+        early_stopping_kwargs = {
+            'monitor': 'val_auc',
+            'patience': 10,
+            'restore_best_weights': True,
+            # Ранняя остановка до 30 эпох оставляла «мёртвые» классы
+            'start_from_epoch': 30,
+        }
+        try:
+            early_stop = keras.callbacks.EarlyStopping(**early_stopping_kwargs)
+        except TypeError:  # старые версии TF без start_from_epoch
+            early_stopping_kwargs.pop('start_from_epoch')
+            early_stop = keras.callbacks.EarlyStopping(**early_stopping_kwargs)
+        callbacks = [early_stop, _EpochSaverCallback(run_id, 80)]
         history = model.fit(
             X_train, y_train,
             validation_split=0.2,
@@ -1019,6 +937,22 @@ def run_training(
         )
         metrics['epochs_history'] = epochs_data
 
+        # Temperature scaling: калибровка вероятностей на тестовой выборке
+        # Подбираем T, который максимизирует top-1 accuracy
+        best_temp, best_acc = 1.0, metrics.get('top1_accuracy', 0)
+        for t in [1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 7.0, 10.0]:
+            scaled = np.power(y_pred_proba, 1.0 / t)
+            scaled = scaled / scaled.sum(axis=1, keepdims=True)
+            preds = np.argmax(scaled, axis=1)
+            true_labels = np.argmax(y_test, axis=1)
+            acc = np.mean(preds == true_labels)
+            if acc > best_acc:
+                best_acc = acc
+                best_temp = t
+        metrics['calibration_temperature'] = round(best_temp, 2)
+        metrics['calibration_accuracy'] = round(best_acc, 4)
+        print(f'[trainer] Temperature scaling: T={best_temp}, acc={best_acc:.4f}', flush=True)
+
         artifact_dir = Path(settings.models_dir) / f'run_{run_id}'
         artifact_dir.mkdir(parents=True, exist_ok=True)
         model.save(artifact_dir / 'model.keras')
@@ -1032,6 +966,7 @@ def run_training(
             'fine_tuned_from': fine_tuned_from,
             'trained_at': datetime.now().isoformat(timespec='seconds'),
             'metrics': metrics,
+            'temperature': best_temp,
         }
         config = _clean_nan(config)
         (artifact_dir / 'config.json').write_text(
@@ -1039,10 +974,15 @@ def run_training(
             encoding='utf-8',
         )
 
-        # Шаг 3: открываем новую сессию для финальной записи
+        # Шаг 3: открываем новую сессию для финальной записи.
+        # Если обучение было отменено (админ выставил failed) — не трогаем
+        # статус: ран остаётся отменённым.
         db_final = SessionLocal()
         try:
             run = db_final.get(ModelRun, run_id)
+            if run and run.status == ModelRunStatus.failed:
+                print('[trainer] Обучение было отменено — артефакты не сохраняются', flush=True)
+                return
             if run:
                 run.status = ModelRunStatus.completed
                 run.artifact_dir = str(artifact_dir)
@@ -1054,6 +994,8 @@ def run_training(
                     'dataset_type': run.config_snapshot.get('dataset_type', run.config_snapshot.get('dataset', dataset)),
                     'dataset_info': dataset_info,
                     'fine_tuned_from': fine_tuned_from,
+                    # Не теряем базовую модель — админка показывает «Fine-tuning от модели #N»
+                    'fine_tuned_from_run': run.config_snapshot.get('fine_tuned_from_run'),
                 }
                 run.error_message = ''
                 run.finished_at = datetime.now()

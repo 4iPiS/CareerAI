@@ -14,6 +14,8 @@
     python scripts/seed.py
 """
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 
@@ -284,6 +286,8 @@ def seed_university_settings(db):
         tagline='Подберём направления подготовки Университета «Дубна» под ваши интересы',
         primary_color='#667eea',
         consent_text=DEFAULT_CONSENT_TEXT,
+        contact_email='abitur@uni-dubna.ru',
+        support_phone='+7 (495) 123-45-67',
     ))
     db.flush()
     print('  настройки вуза: созданы')

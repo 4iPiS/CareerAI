@@ -1,0 +1,14 @@
+
+=================================== ERRORS ====================================
+_________________ ERROR collecting tests/test_platform_api.py _________________
+tests\test_platform_api.py:6: in <module>
+    from app.main import app
+app\main.py:18: in <module>
+    from app.api.admin_settings import router as admin_settings_router
+app\api\admin_settings.py:21: in <module>
+    def _normalize_media_path(value: str | None) -> str:
+E   TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'
+=========================== short test summary info ===========================
+ERROR tests/test_platform_api.py - TypeError: unsupported operand type(s) for...
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.91s

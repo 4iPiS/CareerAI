@@ -25,6 +25,7 @@ class QuestionPayload(BaseModel):
 class StartResponse(BaseModel):
     session_id: str
     question: QuestionPayload
+    progress: Optional[dict] = None
 
 
 class AnswerRequest(BaseModel):
@@ -39,6 +40,7 @@ class AnswerResponse(BaseModel):
     question: Optional[QuestionPayload] = None
     recommendations: Optional[list] = None
     stats: Optional[dict] = None
+    progress: Optional[dict] = None
 
 
 class SurveyDataRequest(BaseModel):

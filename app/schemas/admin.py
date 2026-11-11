@@ -1,6 +1,7 @@
 """Схемы админ-API."""
+from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -38,7 +39,7 @@ class DirectionPayload(BaseModel):
     image_path: str = ''
     sort_order: int = 0
     is_active: bool = True
-    skill_codes: list[str] = []
+    skill_codes: List[str] = []
 
 
 class FeaturePayload(BaseModel):
@@ -73,6 +74,8 @@ class CustomFieldPayload(BaseModel):
     required: bool = False
     sort_order: int = 0
     is_active: bool = True
+    description: str = ''
+    examples: Optional[list[str]] = None
 
 
 class SettingsPayload(BaseModel):
@@ -87,3 +90,14 @@ class SettingsPayload(BaseModel):
     primary_alpha: Optional[float] = None
     consent_text: Optional[str] = None
     custom_form_position: Optional[str] = None
+    contact_email: Optional[str] = None
+    support_phone: Optional[str] = None
+
+
+class RecommenderSettingsPayload(BaseModel):
+    engine: Optional[str] = None
+    api_provider: Optional[str] = None
+    api_key: Optional[str] = None
+    api_base_url: Optional[str] = None
+    api_model: Optional[str] = None
+    system_prompt: Optional[str] = None

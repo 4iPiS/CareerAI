@@ -1,5 +1,6 @@
 """Админ-API: группы вопросов и вопросы опросника."""
 
+from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -154,8 +155,8 @@ def update_question(
     feature = None
     if payload.feature_code:
         feature = db.scalar(select(Feature).where(Feature.code == payload.feature_code))
-    if feature is None:
-        raise HTTPException(status_code=400, detail='Признак не найден')
+        if feature is None:
+            raise HTTPException(status_code=400, detail='Признак не найден')
 
     question.group_id = group.id
     question.feature_id = feature.id if feature else None

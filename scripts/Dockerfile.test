@@ -1,0 +1,5 @@
+FROM python:3.11-slim
+RUN pip install httpx
+COPY test_lm_studio.py /app/test.py
+WORKDIR /app
+CMD ["python", "test.py"]

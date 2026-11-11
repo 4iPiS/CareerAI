@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 """Админ-API: обучающие выборки и запуск обучения модели."""
 import csv as _csv
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import (
@@ -49,10 +52,17 @@ def _run_out(r: ModelRun) -> dict:
     dataset_raw = snapshot.get('dataset')
     dataset_info = snapshot.get('dataset_info')
     dataset_type = snapshot.get('dataset_type')
-    
+    # Fine-tuning: базовая модель сохраняется в config_snapshot
+    ft_run = snapshot.get('fine_tuned_from_run') or snapshot.get('fine_tuned_from_run_id')
+    is_finetune = bool(ft_run) or bool(snapshot.get('fine_tuned_from'))
+
     # Формируем читаемую строку для данных
     dataset_label = '—'
-    if isinstance(dataset_info, dict) and dataset_info:
+    if is_finetune:
+        dataset_label = (
+            f'Fine-tuning от модели #{ft_run}' if ft_run else 'Fine-tuning'
+        )
+    elif isinstance(dataset_info, dict) and dataset_info:
         parts = []
         for k, v in dataset_info.items():
             label = {'synthetic': 'синтетика', 'real': 'реальные'}.get(k, k)
@@ -72,6 +82,7 @@ def _run_out(r: ModelRun) -> dict:
         'error_message': r.error_message,
         'triggered_by': r.triggered_by,
         'dataset': dataset_label,
+        'model_id': ft_run,
         'fine_tuned_from': snapshot.get('fine_tuned_from'),
         'current_epoch': r.current_epoch,
         'total_epochs': r.total_epochs,
@@ -176,15 +187,19 @@ def dataset_progress(
         import json as _json
         try:
             data = _json.loads(progress_file.read_text())
-            # Добавляем progress если его нет
+            # Добавляем progress, если его нет (старый формат step/total)
             if 'progress' not in data:
                 step = data.get('step', 0)
-                total = data.get('total', 10)
+                total = data.get('total', 10) or 10
                 data['progress'] = min(100, round((step / total) * 100))
+            data.setdefault('step', data['progress'])
+            data.setdefault('total', 100)
+            data.setdefault('rows', 0)
+            data.setdefault('done', data['progress'] >= 100)
             return data
         except Exception:
             pass
-    return {'step': 0, 'total': 10, 'rows': 0, 'progress': 0}
+    return {'step': 0, 'total': 100, 'rows': 0, 'progress': 0, 'done': False}
 
 
 @router.get('/train/dataset/download')
@@ -202,6 +217,49 @@ def download_dataset(
         path,
         media_type='text/csv; charset=utf-8',
         filename='training_synthetic.csv',
+    )
+
+
+@router.get('/train/dataset/download-real')
+def download_real_dataset(
+    db: Session = Depends(get_db),
+    _: AdminUser = Depends(get_current_admin),
+):
+    """Скачивает реальные ответы: файл АКТУАЛИЗИРУЕТСЯ из БД перед отдачей,
+    поэтому свежие прохождения всегда попадают в CSV. Если файл ни разу
+    не загружался вручную — создаётся из ответов в БД."""
+    from fastapi.responses import FileResponse
+
+    from app.services.responses import export_responses_csv
+
+    settings = get_settings()
+    path = Path(settings.data_dir) / 'real' / 'responses.csv'
+
+    fresh = export_responses_csv(db)
+    if not fresh:
+        raise HTTPException(status_code=404, detail='В БД нет завершённых сессий')
+    if path.exists():
+        # Сохраняем ручные дополнения: мержим — новые строки из БД
+        # добавляются в конец существующего файла без дублей по session id.
+        existing = path.read_text(encoding='utf-8-sig', errors='replace')
+        fresh_lines = [ln for ln in fresh.splitlines() if ln]
+        header, *fresh_rows = fresh_lines
+        id_col = header.split(',')[0]
+        existing_lines = [ln for ln in existing.splitlines() if ln]
+        existing_header, *existing_rows = existing_lines
+        known = {ln.split(',')[0] for ln in existing_rows}
+        merged = existing_lines + [
+            ln for ln in fresh_rows if ln.split(',')[0] not in known
+        ]
+        path.write_text('\n'.join([existing_header] + merged) + '\n', encoding='utf-8-sig')
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(fresh, encoding='utf-8-sig')
+
+    return FileResponse(
+        path,
+        media_type='text/csv; charset=utf-8',
+        filename='responses.csv',
     )
 
 
@@ -353,7 +411,7 @@ def cancel_training(
     run = db.get(ModelRun, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail='Запуск не найден')
-    if run.status != ModelRunStatus.running:
+    if run.status not in (ModelRunStatus.running, ModelRunStatus.pending):
         raise HTTPException(
             status_code=400,
             detail=f'Нельзя остановить: статус {run.status.value}',

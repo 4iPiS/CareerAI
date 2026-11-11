@@ -7,6 +7,7 @@
     python -m app.cli recommend examples/student_it_profile.csv
     python -m app.cli ask
 """
+from __future__ import annotations
 
 import argparse
 import csv
